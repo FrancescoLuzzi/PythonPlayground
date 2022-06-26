@@ -8,54 +8,54 @@ counter = itertools.count()
 
 class Element:
     __id: int
-    number: int
-    message: str
+    ordering_value: int
+    string_content: str
 
-    def __init__(self, number: int, message: str) -> None:
+    def __init__(self, ordering_value: int, string_content: str) -> None:
         self.__id = next(counter)
-        self.number = number
-        self.message = message
+        self.ordering_value = ordering_value
+        self.string_content = string_content
 
     def get_id(self):
         return self.__id
+
+    def __repr__(self) -> str:
+        return f"{self.string_content} -> {self.ordering_value}"
 
 
 class SmartElement(Element):
     def __eq__(self, __o: Element | int) -> bool:
         if type(__o) == int:
-            return self.number == __o
-        return self.number == __o.number
+            return self.ordering_value == __o
+        return self.ordering_value == __o.ordering_value
 
     def __ne__(self, __o: Element | int) -> bool:
         return not self.__eq__(__o)
 
     def __gt__(self, __o: Element | int) -> bool:
         if type(__o) == int:
-            return self.number > __o
-        return self.number > __o.number
+            return self.ordering_value > __o
+        return self.ordering_value > __o.ordering_value
 
     def __lt__(self, __o: Element | int) -> bool:
         if type(__o) == int:
-            return self.number < __o
-        return self.number < __o.number
+            return self.ordering_value < __o
+        return self.ordering_value < __o.ordering_value
 
     def __ge__(self, __o: Element | int) -> bool:
         if type(__o) == int:
-            return self.number >= __o
-        return self.number >= __o.number
+            return self.ordering_value >= __o
+        return self.ordering_value >= __o.ordering_value
 
     def __le__(self, __o: Element | int) -> bool:
         if type(__o) == int:
-            return self.number <= __o
-        return self.number <= __o.number
+            return self.ordering_value <= __o
+        return self.ordering_value <= __o.ordering_value
 
     def __mod__(self, __o: Element | int) -> int:
         if type(__o) == int:
-            return self.number % __o
-        return self.number % __o.number
-
-    def __repr__(self) -> str:
-        return f"{self.message} -> {self.number}"
+            return self.ordering_value % __o
+        return self.ordering_value % __o.ordering_value
 
 
 class IdSeries(tuple):
@@ -82,7 +82,7 @@ class SmartElementList(ElementList):
 
     def __contains__(self, key):
         key_type = type(key)
-        if key_type == SmartElement:
+        if issubclass(key_type, SmartElement):
             for el in self.elements:
                 if el.get_id() == key.get_id():
                     return True
@@ -105,7 +105,7 @@ class SmartElementList(ElementList):
 
     def __add__(self, __o: SmartElement):
         key_type = type(__o)
-        if key_type == SmartElement:
+        if issubclass(key_type, SmartElement):
             out = self.copy()
             out.elements.append(__o)
             return out
@@ -114,7 +114,7 @@ class SmartElementList(ElementList):
 
     def __sub__(self, __o: SmartElement):
         key_type = type(__o)
-        if key_type == SmartElement:
+        if issubclass(key_type, SmartElement):
             out_ids = self.get_id_series()
             indx = out_ids.index(__o.get_id())
             return self[IdSeries(out_ids[:indx] + out_ids[indx + 1 :])]
@@ -163,7 +163,7 @@ class SmartElementList(ElementList):
     def __mod__(self, __o: int):
         out = []
         for el in self.copy().elements:
-            el.number = el % __o
+            el.ordering_value = el % __o
             out.append(el)
         return self.__class__(out)
 
@@ -188,7 +188,7 @@ element_list = [
 ]
 
 
-def example():
+def __example():
     elements = SmartElementList(element_list)
     el = SmartElement(9, "Added later")
     els = elements + el
@@ -205,4 +205,4 @@ def example():
 
 
 if __name__ == "__main__":
-    example()
+    __example()
