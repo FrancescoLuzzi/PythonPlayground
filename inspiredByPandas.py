@@ -187,12 +187,22 @@ element_list = [
     SmartElement(6, "World"),
 ]
 
-elements = SmartElementList(element_list)
-el = SmartElement(9, "Added later")
-els = elements + el
-print(els)
-el2 = SmartElement(9, "ollare")
-els = els - el2
-print(els)
-print(elements[elements % 2 == 1])
-print(elements[elements == 1])
+
+def example():
+    elements = SmartElementList(element_list)
+    el = SmartElement(9, "Added later")
+    els = elements + el
+    print(els)
+    el2 = SmartElement(9, "Added later 2")
+    try:
+        els = els - el2
+    except ValueError:
+        print("Can't do that, those items have different ids!!")
+    els -= el
+    print(els)
+    print(elements[elements % 2 == 1])
+    print(elements[elements == 1])
+
+
+if __name__ == "__main__":
+    example()
