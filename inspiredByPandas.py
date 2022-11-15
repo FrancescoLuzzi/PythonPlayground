@@ -19,8 +19,11 @@ class Element:
     def get_id(self):
         return self.__id
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f"{self.string_content} -> {self.ordering_value}"
+
+    def __repr__(self) -> str:
+        return f"<SmartElement({self.ordering_value}, {self.string_content}) and __id = {self.__id}>"
 
 
 class SmartElement(Element):
@@ -77,10 +80,10 @@ class ElementList:
 
 
 class SmartElementList(ElementList):
-    def get_id_series(self):
+    def get_id_series(self) -> IdSeries:
         return IdSeries(el.get_id() for el in self.elements)
 
-    def __contains__(self, key):
+    def __contains__(self, key) -> bool:
         key_type = type(key)
         if issubclass(key_type, SmartElement):
             for el in self.elements:
@@ -90,7 +93,7 @@ class SmartElementList(ElementList):
         else:
             raise ValueError(f"Not yet implemented for {key_type.__name__}")
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> "SmartElementList":
         key_type = type(key)
         if key_type == int:
             return self.__class__([self.elements[key]])
@@ -103,7 +106,7 @@ class SmartElementList(ElementList):
         else:
             raise ValueError(f"Not yet implemented for {key_type.__name__}")
 
-    def __add__(self, __o: SmartElement):
+    def __add__(self, __o: SmartElement) -> "SmartElementList":
         key_type = type(__o)
         if issubclass(key_type, SmartElement):
             out = self.copy()
@@ -112,7 +115,7 @@ class SmartElementList(ElementList):
         else:
             raise ValueError(f"Not yet implemented for {key_type.__name__}")
 
-    def __sub__(self, __o: SmartElement):
+    def __sub__(self, __o: SmartElement) -> "SmartElementList":
         key_type = type(__o)
         if issubclass(key_type, SmartElement):
             out_ids = self.get_id_series()
@@ -154,27 +157,30 @@ class SmartElementList(ElementList):
     def ge(self, __o: int | Element) -> "SmartElementList":
         return self.__class__([el for el in self.elements if el >= __o])
 
-    def le(self, __o: int | Element):
+    def le(self, __o: int | Element) -> "SmartElementList":
         return self.__class__([el for el in self.elements if el <= __o])
 
-    def copy(self):
+    def copy(self) -> "SmartElementList":
         return self.__class__([copy(el) for el in self.elements])
 
-    def __mod__(self, __o: int):
+    def __mod__(self, __o: int) -> "SmartElementList":
         out = []
         for el in self.copy().elements:
             el.ordering_value = el % __o
             out.append(el)
         return self.__class__(out)
 
-    def __repr__(self) -> str:
-        return f"{self.elements}"
+    def __str__(self) -> str:
+        return f"{[str(e) for e in self.elements]}"
 
-    def scramble(self):
+    def __repr__(self) -> str:
+        return f"{[repr(e) for e in self.elements]}"
+
+    def scramble(self) -> None:
         random.seed(time_ns())
         random.shuffle(self.elements)
 
-    def sort(self, reverse: bool = False):
+    def sort(self, reverse: bool = False) -> None:
         self.elements.sort(reverse=reverse)
 
 
@@ -188,7 +194,7 @@ element_list = [
 ]
 
 
-def __example():
+def _example():
     elements = SmartElementList(element_list)
     el = SmartElement(9, "Added later")
     els = elements + el
@@ -198,6 +204,8 @@ def __example():
         els = els - el2
     except ValueError:
         print("Can't do that, those items have different ids!!")
+        print(f"{repr(el)} != {repr(el2)}")
+    els += el2
     els -= el
     print(els)
     print(elements[elements % 2 == 1])
@@ -205,4 +213,4 @@ def __example():
 
 
 if __name__ == "__main__":
-    __example()
+    _example()
