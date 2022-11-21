@@ -1,0 +1,14 @@
+POST http://localhost:8000/ollare HTTP/1.1
+content-type: application/json
+
+{
+    "name": "Francesco",
+    "surname": "Luzzi"
+}
+
+###
+
+GET  http://localhost:8000/favicon.ico HTTP/1.1
+###
+
+GET  http://localhost:8000/ollare?ollare=fico HTTP/1.1
