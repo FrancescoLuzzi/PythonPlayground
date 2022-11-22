@@ -1,4 +1,4 @@
-POST http://localhost:8000/ollare HTTP/1.1
+POST http://localhost:8000/foo HTTP/1.1
 content-type: application/json
 
 {
@@ -9,6 +9,23 @@ content-type: application/json
 ###
 
 GET  http://localhost:8000/favicon.ico HTTP/1.1
+
+
 ###
 
-GET  http://localhost:8000/ollare?ollare=fico HTTP/1.1
+GET  http://localhost:8000/foo?foo=foo HTTP/1.1
+
+
+###
+
+GET  http://localhost:8000/bar?foo=hello,world&bar=bar HTTP/1.1
+
+###
+
+POST http://localhost:8000/bar HTTP/1.1
+content-type: application/json
+
+{
+    "foo": "foo",
+    "bar": "bar"
+}
