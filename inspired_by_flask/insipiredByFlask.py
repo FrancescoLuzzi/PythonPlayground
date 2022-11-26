@@ -1,7 +1,6 @@
 import json
 import logging
 import socketserver
-from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from os import environ
 from os.path import dirname, join
@@ -9,16 +8,9 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from collections import defaultdict
 from http import HTTPStatus
+from http_utils import HttpMethod
 
 from dotenv import load_dotenv
-
-
-class HttpMethod(Enum):
-    GET = "GET"
-    POST = "POST"
-
-    def __str__(self) -> str:
-        return self.value
 
 
 stream_handler = logging.StreamHandler()
