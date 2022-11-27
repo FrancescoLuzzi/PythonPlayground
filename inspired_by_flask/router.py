@@ -22,8 +22,15 @@ class UrlParamFormatter(Generic[T]):
     def __init__(self, converter: T) -> None:
         self.converter = converter
 
+    def is_convertable(self, value: str) -> bool:
+        try:
+            self.convert(value)
+            return True
+        except ValueError:
+            return False
+
     def convert(self, value: str) -> T:
-        return self.convert(value)
+        return self.converter(value)
 
 
 # url_format /url/format/<type_var:name1>/<name2>
@@ -31,7 +38,7 @@ class UrlParamFormatter(Generic[T]):
 # name2 will be defaulted to str
 
 
-def url_parser(url_format: str, url: str) -> dict[Any]:
+def parse_url(url_format: str, url: str) -> dict[str]:
     pass
 
 
@@ -40,7 +47,7 @@ def from_url_get_required_params(url_format: str) -> dict[UrlParamFormatter]:
 
 
 class Route:
-    url: str = ""
+    mapped_url: str = ""
     handler: function = print
     accepted_methods: list[HttpMethod] = []
     __reqired_url_params: dict[str, UrlParamFormatter] = {}
@@ -53,17 +60,32 @@ class Route:
         accepted_methods: list[HttpMethod],
         default_url_params: dict[str, Any] = {},
     ) -> None:
-        self.url = url
+        self.mapped_url = url
         self.accepted_methods = accepted_methods
         self.__default_url_params = default_url_params
         self.__reqired_url_params = from_url_get_required_params(url)
         self.handler = handler
 
     def validate_url(self, url: str) -> bool:
-        pass
+        try:
+            return all(
+                self.__reqired_url_params[key].is_convertable(value)
+                for key, value in parse_url(self.mapped_url, url).items()
+            )
+        except UrlFormatError:
+            return False
 
     def parse_url(self, url: "str") -> tuple[function, dict]:
-        pass
+        return (
+            self.handler,
+            {
+                **self.__default_url_params,
+                **{
+                    key: self.__reqired_url_params[key].convert(value)
+                    for key, value in parse_url(self.mapped_url, url).items()
+                },
+            },
+        )
 
 
 class DefaultRoute(Route):
