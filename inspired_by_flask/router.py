@@ -2,7 +2,16 @@ from http_utils import HttpMethod
 from typing import Any, Generic, TypeVar
 from re import compile
 
-_URL_PARAMS_FINDER = compile(r".+/(?P<url_param><(?P<type>\w:)\w)/.*")
+_URL_PARAMS_FINDER = compile(r"(\<.+?\>)")
+_URL_PARAMS_TYPE_FINDER = compile(r"\<((?P<type>.+):)?(?P<name>.+){1}\>")
+"""
+>>> oll = _URL_PARAMS_FINDER.findall("/url/format/<int:name1>/<name2>")
+>>> oll
+['<int:name1>', '<name2>']
+>>> param = _URL_PARAMS_TYPE_FINDER.match(oll[0])
+>>> param.group("type")
+'int'
+"""
 
 T = TypeVar("T")
 
