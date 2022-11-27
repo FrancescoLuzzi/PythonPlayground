@@ -16,6 +16,10 @@ _URL_PARAMS_TYPE_FINDER = compile(r"\<((?P<type>.+):)?(?P<name>.+){1}\>")
 T = TypeVar("T")
 
 
+class UrlFormatError(ValueError):
+    pass
+
+
 class UrlParamFormatter(Generic[T]):
     converter: T = None
 
@@ -39,10 +43,19 @@ class UrlParamFormatter(Generic[T]):
 
 
 def parse_url(url_format: str, url: str) -> dict[str]:
+    """
+    from format /url/format/<int:name1>/<name2>
+    url="/url/format/1/oh_yeah" -> return {"name1": "1", "name2": "oh_yeah"}
+    url="/url/format/1" -> raise UrlFormatError("url missformatted")
+    """
     pass
 
 
 def from_url_get_required_params(url_format: str) -> dict[UrlParamFormatter]:
+    """
+    from format /url/format/<int:name1>/<name2>
+    url="/url/format/1/oh_yeah" -> return {"name1": UrlParamFormatter[int], "name2": UrlParamFormatter[str]}
+    """
     pass
 
 
