@@ -1,9 +1,11 @@
 from http_utils import HttpMethod
 from typing import Any, Generic, TypeVar
 from re import compile
+from collections import defaultdict
 
 _URL_PARAMS_FINDER = compile(r"(\<.+?\>)")
 _URL_PARAMS_TYPE_FINDER = compile(r"\<((?P<type>.+):)?(?P<name>.+){1}\>")
+_PARAM_TYPE_MAPPER = defaultdict(lambda: str, {"int": int, "float": float})
 """
 >>> oll = _URL_PARAMS_FINDER.findall("/url/format/<int:name1>/<name2>")
 >>> oll
@@ -37,26 +39,43 @@ class UrlParamFormatter(Generic[T]):
         return self.converter(value)
 
 
-# url_format /url/format/<type_var:name1>/<name2>
-# name1 will be converted as type type_var
-# name2 will be defaulted to str
-
-
-def parse_url(url_format: str, url: str) -> dict[str]:
+def parse_url(url_format: str, url: str) -> dict[str, str]:
     """
     from format /url/format/<int:name1>/<name2>
     url="/url/format/1/oh_yeah" -> return {"name1": "1", "name2": "oh_yeah"}
     url="/url/format/1" -> raise UrlFormatError("url missformatted")
     """
-    pass
+    params_dict = {}
+    url_format_list = url_format.split("/")
+    url_list = url.split("/")
+    if len(url_format_list) != len(url_list):
+        raise UrlFormatError(f"len of format url is different from given url")
+
+    for format_part, request_part in zip(url_format_list, url_list):
+        if format_part == request_part:
+            continue
+        param = _URL_PARAMS_TYPE_FINDER.match(format_part)
+        if not param:
+            raise UrlFormatError(
+                "part of the path of the url was different and wasn't a param"
+            )
+        params_dict[param.group("name")] = request_part
+    return params_dict
 
 
-def from_url_get_required_params(url_format: str) -> dict[UrlParamFormatter]:
+def from_url_get_required_params(url_format: str) -> dict[str, UrlParamFormatter]:
     """
     from format /url/format/<int:name1>/<name2>
     url="/url/format/1/oh_yeah" -> return {"name1": UrlParamFormatter[int], "name2": UrlParamFormatter[str]}
     """
-    pass
+    parsers_dict = {}
+    for param in _URL_PARAMS_FINDER.findall(url_format):
+
+        param = _URL_PARAMS_TYPE_FINDER.match(param)
+        param_type = param.group("type") if param is not None else "str"
+        param_type = _PARAM_TYPE_MAPPER[param_type]
+        parsers_dict[param.group("name")] = UrlParamFormatter[param_type](param_type)
+    return parsers_dict
 
 
 class Route:
