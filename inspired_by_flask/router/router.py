@@ -128,7 +128,7 @@ class DefaultRoute(Route):
     ) -> None:
         super().__init__(url, handler, [], {})
 
-    def parse_url(self, url: "str"):
+    def parse_url(self, url: "str") -> tuple[function, dict]:
         return self.handler, {}
 
 
@@ -141,5 +141,5 @@ class Router:
 
     def __getattribute__(self, __url: str) -> tuple[function, dict]:
         return next(
-            filter(lambda x: x.validate(__url), self.routes), self.__default_route
+            filter(lambda x: x.validate_url(__url), self.routes), self.__default_route
         ).parse_url(__url)
