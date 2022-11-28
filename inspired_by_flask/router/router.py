@@ -1,5 +1,5 @@
 from http_utils import HttpMethod
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, Callable
 from re import compile
 from collections import defaultdict
 
@@ -80,7 +80,7 @@ def from_url_get_required_params(url_format: str) -> dict[str, UrlParamFormatter
 
 class Route:
     mapped_url: str = ""
-    handler: function = print
+    handler: Callable = print
     accepted_methods: list[HttpMethod] = []
     __reqired_url_params: dict[str, UrlParamFormatter] = {}
     __default_url_params: dict[str, Any] = {}
@@ -88,7 +88,7 @@ class Route:
     def __init__(
         self,
         url: str,
-        handler: function,
+        handler: Callable,
         accepted_methods: list[HttpMethod],
         default_url_params: dict[str, Any] = {},
     ) -> None:
@@ -97,6 +97,18 @@ class Route:
         self.__default_url_params = default_url_params
         self.__reqired_url_params = from_url_get_required_params(url)
         self.handler = handler
+
+    def __eq__(self, __o: object) -> bool:
+        if isinstance(__o, self.__class__):
+            return (
+                self.mapped_url == __o.mapped_url
+                and self.accepted_methods == __o.accepted_methods
+            )
+        else:
+            raise ValueError(f"== not supported for type {type(__o)}")
+
+    def validate_method(self, method: HttpMethod):
+        return method in self.accepted_methods
 
     def validate_url(self, url: str) -> bool:
         try:
@@ -107,7 +119,7 @@ class Route:
         except UrlFormatError:
             return False
 
-    def parse_url(self, url: "str") -> tuple[function, dict]:
+    def parse_url(self, url: "str") -> tuple[Callable, dict]:
         return (
             self.handler,
             {
@@ -124,22 +136,58 @@ class DefaultRoute(Route):
     def __init__(
         self,
         url: str,
-        handler: function,
+        handler: Callable,
     ) -> None:
         super().__init__(url, handler, [], {})
 
-    def parse_url(self, url: "str") -> tuple[function, dict]:
+    def parse_url(self, url: "str") -> tuple[Callable, dict]:
         return self.handler, {}
 
 
-class Router:
-    routes: set[Route] = set()
-    __default_route: Route
+class RoutesSet:
+    __all_routes: list[Route] = []
+    __default_route: DefaultRoute = None
 
-    def __init__(self, default_handler: function) -> None:
-        self.__default_route = DefaultRoute("", default_handler)
+    def __init__(self, default_route: DefaultRoute) -> None:
+        self.__default_route = default_route
 
-    def __getattribute__(self, __url: str) -> tuple[function, dict]:
+    def add_route(self, new_route: Route) -> bool:
+        for route in self.__all_routes:
+            if route == new_route:
+                return False
+
+        self.__all_routes.append(new_route)
+        return True
+
+    def get_route(self, __url: str, method: HttpMethod) -> Route:
         return next(
-            filter(lambda x: x.validate_url(__url), self.routes), self.__default_route
+            filter(
+                lambda x: x.validate_method(method) and x.validate_url(__url),
+                self.__all_routes,
+            ),
+            self.__default_route,
         ).parse_url(__url)
+
+
+class Router:
+    routes: RoutesSet = None
+
+    def __init__(self, default_handler: Callable) -> None:
+        self.routes = RoutesSet(DefaultRoute("", default_handler))
+
+    def get_handler(self, __url: str, method: HttpMethod) -> tuple[Callable, dict]:
+        return self.routes.get_route(__url, method).parse_url(__url)
+
+    def route(
+        self,
+        url: str,
+        handler: Callable,
+        accepted_methods: list[HttpMethod] = [HttpMethod.GET],
+        default_params: dict[str, Any] = {},
+    ):
+        self.routes.add_route(Route(url, handler, accepted_methods, default_params))
+
+
+if __name__ == "__main__":
+    # testing code
+    pass
