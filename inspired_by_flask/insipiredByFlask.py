@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from collections import defaultdict
 from http import HTTPStatus
-from http_utils import HttpMethod
+from router.http_utils import HttpMethod
 
 from dotenv import load_dotenv
 
