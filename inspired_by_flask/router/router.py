@@ -94,8 +94,9 @@ class Route:
     ) -> None:
         self.mapped_url = url
         self.accepted_methods = accepted_methods
-        self.__default_url_params = default_url_params
         self.__reqired_url_params = from_url_get_required_params(url)
+        if self.__reqired_url_params:
+            self.__default_url_params = default_url_params
         self.handler = handler
 
     def __eq__(self, __o: object) -> bool:
