@@ -13,7 +13,7 @@ GET  http://localhost:8000/favicon.ico HTTP/1.1
 
 ###
 
-GET  http://localhost:8000/foo?foo=foo HTTP/1.1
+GET  http://localhost:8000/foo/ollare?foo=foo HTTP/1.1
 
 
 ###
@@ -29,3 +29,11 @@ content-type: application/json
     "foo": "foo",
     "bar": "bar"
 }
+###
+
+GET http://localhost:8000/multi_params/foo HTTP/1.1
+
+###
+
+GET http://localhost:8000/multi_params/foo/12 HTTP/1.1
+
