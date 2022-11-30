@@ -1,4 +1,9 @@
-from http_utils import HttpMethod
+try:
+    from .http_utils import HttpMethod
+except ImportError:
+    # for testing
+    from http_utils import HttpMethod
+
 from typing import Any, Generic, TypeVar, Callable, Iterator
 from re import compile
 from collections import defaultdict
@@ -162,8 +167,8 @@ class DefaultRoute(SimpleRoute):
     ) -> None:
         super().__init__(url, handler, [])
 
-    def parse_url(self, url: "str") -> tuple[Callable, dict]:
-        return self.handler, {}
+    def parse_url(self, url: "str") -> tuple[Callable, None]:
+        return self.handler, None
 
 
 class NestedRoute(Route):
@@ -184,7 +189,7 @@ class NestedRoute(Route):
         self.mapped_route = mapped_route
         self.__default_url_params_str = "/".join(
             (
-                default_url_params[param_name]
+                str(default_url_params[param_name])
                 for param_name in from_url_get_required_params_names(
                     self.mapped_route.mapped_url
                 )
@@ -211,6 +216,9 @@ class RouteSet:
     def __init__(self, default_route: DefaultRoute) -> None:
         self.__default_route = default_route
 
+    def set_default_route_handler(self, default_handler: Callable):
+        self.__default_route.handler = default_handler
+
     def add_route(self, new_route: Route) -> bool:
         for route in self.__all_routes:
             if route == new_route:
@@ -229,13 +237,26 @@ class RouteSet:
         )
 
 
+def _default_handler_not_set(*args, **kwargs):
+    raise NotImplemented("Default handler not set")
+
+
 class Router:
     routes: RouteSet = None
 
-    def __init__(self, default_handler: Callable) -> None:
+    def __init__(self, default_handler: Callable = _default_handler_not_set) -> None:
         self.routes = RouteSet(DefaultRoute("", default_handler))
 
-    def get_handler(self, __url: str, method: HttpMethod) -> tuple[Callable, dict]:
+    def set_default_handler(self, default_handler: Callable):
+        self.routes.set_default_route_handler(default_handler)
+
+    def get_handler(
+        self, __url: str, method: HttpMethod
+    ) -> tuple[Callable, dict | None]:
+        """
+        get handler for specified __url and method
+        if return is Callable,None, the default_handler is returned
+        """
         return self.routes.get_route(__url, method).parse_url(__url)
 
     def add_route(
