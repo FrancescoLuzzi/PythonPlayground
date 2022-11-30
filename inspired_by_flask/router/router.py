@@ -1,5 +1,5 @@
 from http_utils import HttpMethod
-from typing import Any, Generic, TypeVar, Callable
+from typing import Any, Generic, TypeVar, Callable, Iterator
 from re import compile
 from collections import defaultdict
 from abc import ABC, abstractmethod
@@ -70,14 +70,25 @@ def from_url_get_required_params(url_format: str) -> dict[str, UrlParamFormatter
     from format /url/format/<int:name1>/<name2>
     url="/url/format/1/oh_yeah" -> return {"name1": UrlParamFormatter[int], "name2": UrlParamFormatter[str]}
     """
-    parsers_dict = {}
+    params_formatters = {}
     for param in _URL_PARAMS_FINDER.findall(url_format):
-
         param = _URL_PARAMS_TYPE_FINDER.match(param)
         param_type = param.group("type") if param is not None else "str"
         param_type = _PARAM_TYPE_MAPPER[param_type]
-        parsers_dict[param.group("name")] = UrlParamFormatter[param_type](param_type)
-    return parsers_dict
+        params_formatters[param.group("name")] = UrlParamFormatter[param_type](
+            param_type
+        )
+    return params_formatters
+
+
+def from_url_get_required_params_names(url_format: str) -> Iterator[str]:
+    """
+    from format /url/format/<int:name1>/<name2>
+    return Iterator("name1","name2")
+    """
+    for param in _URL_PARAMS_FINDER.findall(url_format):
+        param = _URL_PARAMS_TYPE_FINDER.match(param)
+        yield param.group("name")
 
 
 class Route(ABC):
@@ -157,35 +168,39 @@ class DefaultRoute(SimpleRoute):
 
 class NestedRoute(Route):
     mapped_route: Route
-    __default_url_params: dict[str, Any] = {}
+    __default_url_params_str: str = {}
 
     def __init__(
         self,
         url: str,
-        mapped_route: Callable,
+        mapped_route: SimpleRoute,
         accepted_methods: list[HttpMethod],
         default_url_params: dict[str, Any],
     ) -> None:
         self.mapped_url = url
         self.accepted_methods = accepted_methods
-        # should extract url formatting so that in validate url and parse url we can put the default values in the correct order
-        self.__default_url_params = default_url_params
+        # extract url params names in order so we can append in the url
+        # the default values in the correct order
         self.mapped_route = mapped_route
+        self.__default_url_params_str = "/".join(
+            (
+                default_url_params[param_name]
+                for param_name in from_url_get_required_params_names(
+                    self.mapped_route.mapped_url
+                )
+                if param_name in default_url_params
+            )
+        )
+        print(self.__default_url_params_str)
 
     def validate_url(self, url: str) -> bool:
-        url += "/"
         return self.mapped_route.validate_url(
-            urljoin(
-                url, "/".join([value for value in self.__default_url_params.values()])
-            )
+            urljoin(url + "/", self.__default_url_params_str)
         )
 
     def parse_url(self, url: "str") -> tuple[Callable, dict]:
-        url += "/"
         return self.mapped_route.parse_url(
-            urljoin(
-                url, "/".join([value for value in self.__default_url_params.values()])
-            )
+            urljoin(url + "/", self.__default_url_params_str)
         )
 
 
