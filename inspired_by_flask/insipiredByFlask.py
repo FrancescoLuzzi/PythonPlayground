@@ -9,6 +9,8 @@ from urllib.parse import parse_qs, urlparse
 from collections import defaultdict
 from http import HTTPStatus
 from router.http_utils import HttpMethod
+from router.router import Router
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -32,7 +34,7 @@ FAVICO_PATH = join(dirname(__file__), "favicon.ico")
 
 
 class RestWebserver(BaseHTTPRequestHandler):
-    routing = defaultdict()
+    routing = Router()
 
     def __init__(
         self,
@@ -40,18 +42,15 @@ class RestWebserver(BaseHTTPRequestHandler):
         client_address: tuple[str, int],
         server: socketserver.BaseServer,
     ) -> None:
+        RestWebserver.routing.set_default_handler(self.__default_func)
         super().__init__(request, client_address, server)
-        self.routing.default_factory = lambda: {
-            HttpMethod.GET: self.__default_func,
-            HttpMethod.POST: self.__default_func,
-        }
 
-    def __default_func(self, *, call_type: HttpMethod = None, **kwargs):
+    def __default_func(self, *, HttpMethod_type: HttpMethod = None, **kwargs):
         """
         Default return when an url is not mapped to a function
         """
         self.__send_headers(HTTPStatus.NOT_IMPLEMENTED)
-        _LOGGER.warning(f"{self.path} request not mapped for {call_type} method.")
+        _LOGGER.warning(f"{self.path} request not mapped for {HttpMethod_type} method.")
 
     def log_message(self, format: str, *args) -> None:
         _LOGGER.info("%s - - %s\n" % (self.address_string(), format % args))
@@ -61,7 +60,10 @@ class RestWebserver(BaseHTTPRequestHandler):
 
     @classmethod
     def route(
-        cls, url: str, methods: list[HttpMethod] = [HttpMethod.GET]
+        cls,
+        url: str,
+        methods: list[HttpMethod] = [HttpMethod.GET],
+        default_params: dict[str, Any] = {},
     ) -> "function":
         """
         Classmethod to route an url to a function.\n
@@ -78,20 +80,14 @@ class RestWebserver(BaseHTTPRequestHandler):
         def post_url(*, param1, param2, **kwargs):\n
 
         @RestWebserver.route("url", [HttpMethod.GET, HttpMethod.POST])\n
-        def get_post_url(*,call_type: HttpMethod, param1=[], param2=[], **kwargs):\n
+        def get_post_url(*,HttpMethod_type: HttpMethod, param1=[], param2=[], **kwargs):\n
 
 
         If some parameters are missing raise TypeError with a meaningful error description
         """
 
         def decorator(func):
-            if url not in cls.routing:
-                cls.routing[url] = {}
-
-            for method in methods:
-                if method not in cls.routing[url]:
-                    cls.routing[url][method] = func
-            return func
+            return cls.routing.add_route(url, func, methods, default_params)
 
         return decorator
 
@@ -125,22 +121,21 @@ class RestWebserver(BaseHTTPRequestHandler):
         parsed_url = urlparse(url)
         url = parsed_url.path
         get_params = parse_qs(parsed_url.query)
+        get_params["HttpMethod_type"] = HttpMethod.GET
+        handler, params = RestWebserver.routing.get_handler(url, HttpMethod.GET)
         # if url not mapped
-        if url not in self.routing:
-            return self.__default_func()
-        get_params["call_type"] = HttpMethod.GET
+        if params is None:
+            return handler(**get_params)
+
         try:
-            self.__send_json_response(self.routing[url][HttpMethod.GET](**get_params))
+            params = {**get_params, **params}
+            self.__send_json_response(handler(**params))
         except TypeError as e:
             self.__send_json_response({"error": str(e)}, HTTPStatus.BAD_REQUEST)
 
     def do_POST(self):
         url = self.path
         body_post = self.rfile.read(int(self.headers["Content-Length"])).decode()
-
-        # if url not mapped
-        if url not in self.routing:
-            return self.__default_func()
 
         # we expect json
         if len(body_post) > 0 and self.headers["Content-Type"] == "application/json":
@@ -152,9 +147,15 @@ class RestWebserver(BaseHTTPRequestHandler):
         else:
             _LOGGER.error("not application/json")
             post_params = {}
-        post_params["call_type"] = HttpMethod.POST
+        post_params["HttpMethod_type"] = HttpMethod.POST
+        handler, params = RestWebserver.routing.get_handler(url, HttpMethod.POST)
+        # if url not mapped
+        if params is None:
+            return handler(**post_params)
+
         try:
-            self.__send_json_response(self.routing[url][HttpMethod.POST](**post_params))
+            params = {**post_params, **params}
+            self.__send_json_response(handler(**params))
         except TypeError as e:
             self.__send_json_response({"error": str(e)}, HTTPStatus.BAD_REQUEST)
 
@@ -179,12 +180,22 @@ def post_ollare(*, name, surname, **kwargs):
 
 
 @RestWebserver.route("/bar", [HttpMethod.GET, HttpMethod.POST])
-def get_post_swag_stuff(*, call_type: HttpMethod, foo=[], bar=[], **kwargs):
+def get_post_swag_stuff(*, HttpMethod_type: HttpMethod, foo=[], bar=[], **kwargs):
     return {
-        "response": f"{call_type} HelloWorld!",
-        "call_type": str(call_type),
+        "response": f"{HttpMethod_type} HelloWorld!",
+        "HttpMethod_type": str(HttpMethod_type),
         "foo": foo,
         "bar": bar,
+    }
+
+
+@RestWebserver.route("/multi_params/<first>", default_params={"second": 57})
+@RestWebserver.route("/multi_params/<first>/<int:second>")
+def get_multi_params(*, HttpMethod_type: HttpMethod, first, second):
+    return {
+        "HttpMethod_type": str(HttpMethod_type),
+        "first": first,
+        "second": second,
     }
 
 
