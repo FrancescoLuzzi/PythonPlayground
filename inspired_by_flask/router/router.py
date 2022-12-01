@@ -240,7 +240,29 @@ def _default_handler_not_set(*args, **kwargs):
     raise NotImplemented("Default handler not set")
 
 
-class Router:
+class SingletonMeta(type):
+    """
+    Usage:\n
+        class myclass(metaclass = SingletonMeta):
+            ...
+
+    """
+
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        """
+        Possible changes to the values of the `__init__` arguments do not affect
+        the returned instance.
+        """
+        if cls not in cls._instances:
+            if cls not in cls._instances:
+                instance = super().__call__(*args, **kwargs)
+                cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
+class Router(metaclass=SingletonMeta):
     routes: RouteSet = None
 
     def __init__(self, default_handler: Callable = _default_handler_not_set) -> None:

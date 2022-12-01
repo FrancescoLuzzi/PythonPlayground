@@ -31,17 +31,17 @@ PORT = int(environ.get("APP_PORT", 8000))
 
 FAVICO_PATH = join(dirname(__file__), "favicon.ico")
 
+Router()
+
 
 class RestWebserver(BaseHTTPRequestHandler):
-    routing = Router()
-
     def __init__(
         self,
         request: bytes,
         client_address: tuple[str, int],
         server: socketserver.BaseServer,
     ) -> None:
-        RestWebserver.routing.set_default_handler(self.__default_func)
+        Router().set_default_handler(self.__default_func)
         super().__init__(request, client_address, server)
 
     def __default_func(self, *, HttpMethod_type: HttpMethod = None, **kwargs):
@@ -86,7 +86,7 @@ class RestWebserver(BaseHTTPRequestHandler):
         """
 
         def decorator(func):
-            return cls.routing.add_route(url, func, methods, default_params)
+            return Router().add_route(url, func, methods, default_params)
 
         return decorator
 
@@ -120,8 +120,9 @@ class RestWebserver(BaseHTTPRequestHandler):
         parsed_url = urlparse(url)
         url = parsed_url.path
         get_params = parse_qs(parsed_url.query)
+        print(url)
         get_params["HttpMethod_type"] = HttpMethod.GET
-        handler, params = RestWebserver.routing.get_handler(url, HttpMethod.GET)
+        handler, params = Router().get_handler(url, HttpMethod.GET)
         # if url not mapped
         if params is None:
             return handler(**get_params)
@@ -147,7 +148,7 @@ class RestWebserver(BaseHTTPRequestHandler):
             _LOGGER.error("not application/json")
             post_params = {}
         post_params["HttpMethod_type"] = HttpMethod.POST
-        handler, params = RestWebserver.routing.get_handler(url, HttpMethod.POST)
+        handler, params = Router().get_handler(url, HttpMethod.POST)
         # if url not mapped
         if params is None:
             return handler(**post_params)
