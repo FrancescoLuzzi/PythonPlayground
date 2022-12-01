@@ -6,7 +6,6 @@ from os import environ
 from os.path import dirname, join
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
-from collections import defaultdict
 from http import HTTPStatus
 from router.http_utils import HttpMethod
 from router.router import Router

@@ -196,7 +196,6 @@ class NestedRoute(Route):
                 if param_name in default_url_params
             )
         )
-        print(self.__default_url_params_str)
 
     def validate_url(self, url: str) -> bool:
         return self.mapped_route.validate_url(
