@@ -28,6 +28,10 @@ class UrlFormatError(ValueError):
     pass
 
 
+class RouteNotFoundError(Exception):
+    pass
+
+
 class UrlParamFormatter(Generic[T]):
     converter: T = None
 
@@ -158,18 +162,6 @@ class SimpleRoute(Route):
         )
 
 
-class DefaultRoute(SimpleRoute):
-    def __init__(
-        self,
-        url: str,
-        handler: Callable,
-    ) -> None:
-        super().__init__(url, handler, [])
-
-    def parse_url(self, url: list[str]) -> tuple[Callable, None]:
-        return self.handler, None
-
-
 class NestedRoute(Route):
     mapped_route: Route
     __default_url_params_str: list[str] = []
@@ -204,13 +196,6 @@ class NestedRoute(Route):
 class RouteSet:
     # maps url's length to a list of url with that length
     __all_routes: dict[int, list[Route]] = {}
-    __default_route: DefaultRoute = None
-
-    def __init__(self, default_route: DefaultRoute) -> None:
-        self.__default_route = default_route
-
-    def set_default_route_handler(self, default_handler: Callable):
-        self.__default_route.handler = default_handler
 
     def add_route(self, new_route: Route) -> bool:
         url_length = len(new_route.mapped_url)
@@ -230,13 +215,8 @@ class RouteSet:
             filter(
                 lambda x: x.validate_method(method) and x.validate_url(__url),
                 self.__all_routes.get(len(__url), []),
-            ),
-            self.__default_route,
+            )
         )
-
-
-def _default_handler_not_set(*args, **kwargs):
-    raise NotImplemented("Default handler not set")
 
 
 class SingletonMeta(type):
@@ -264,11 +244,8 @@ class SingletonMeta(type):
 class Router(metaclass=SingletonMeta):
     routes: RouteSet = None
 
-    def __init__(self, default_handler: Callable = _default_handler_not_set) -> None:
-        self.routes = RouteSet(DefaultRoute("", default_handler))
-
-    def set_default_handler(self, default_handler: Callable):
-        self.routes.set_default_route_handler(default_handler)
+    def __init__(self) -> None:
+        self.routes = RouteSet()
 
     def get_handler(
         self, __url: str, method: HttpMethod
@@ -278,7 +255,10 @@ class Router(metaclass=SingletonMeta):
         if return is Callable,None, the default_handler is returned
         """
         __url_list = __url.split("/")
-        return self.routes.get_route(__url_list, method).parse_url(__url_list)
+        try:
+            return self.routes.get_route(__url_list, method).parse_url(__url_list)
+        except StopIteration:
+            raise RouteNotFoundError(f"url: {__url} and method: {method} not routed")
 
     def add_route(
         self,

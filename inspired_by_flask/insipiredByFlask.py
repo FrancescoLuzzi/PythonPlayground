@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from http import HTTPStatus
 from router.http_utils import HttpMethod
-from router.router import Router
+from router.router import Router, RouteNotFoundError
 from typing import Any
 
 from dotenv import load_dotenv
@@ -41,7 +41,6 @@ class RestWebserver(BaseHTTPRequestHandler):
         client_address: tuple[str, int],
         server: socketserver.BaseServer,
     ) -> None:
-        Router().set_default_handler(self.__default_func)
         super().__init__(request, client_address, server)
 
     def __default_func(self, *, HttpMethod_type: HttpMethod = None, **kwargs):
@@ -120,12 +119,11 @@ class RestWebserver(BaseHTTPRequestHandler):
         parsed_url = urlparse(url)
         url = parsed_url.path
         get_params = parse_qs(parsed_url.query)
-        print(url)
         get_params["HttpMethod_type"] = HttpMethod.GET
-        handler, params = Router().get_handler(url, HttpMethod.GET)
-        # if url not mapped
-        if params is None:
-            return handler(**get_params)
+        try:
+            handler, params = Router().get_handler(url, HttpMethod.GET)
+        except RouteNotFoundError:
+            return self.__default_func(**get_params)
 
         try:
             params = {**get_params, **params}
@@ -148,10 +146,10 @@ class RestWebserver(BaseHTTPRequestHandler):
             _LOGGER.error("not application/json")
             post_params = {}
         post_params["HttpMethod_type"] = HttpMethod.POST
-        handler, params = Router().get_handler(url, HttpMethod.POST)
-        # if url not mapped
-        if params is None:
-            return handler(**post_params)
+        try:
+            handler, params = Router().get_handler(url, HttpMethod.POST)
+        except RouteNotFoundError:
+            return self.__default_func(**post_params)
 
         try:
             params = {**post_params, **params}
