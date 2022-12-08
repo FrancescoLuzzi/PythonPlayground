@@ -37,3 +37,7 @@ GET http://localhost:8000/multi_params/foo HTTP/1.1
 
 GET http://localhost:8000/multi_params/foo/12 HTTP/1.1
 
+###
+
+GET http://localhost:8000/class/function HTTP/1.1
+

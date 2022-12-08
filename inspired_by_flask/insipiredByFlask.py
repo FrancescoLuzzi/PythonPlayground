@@ -66,3 +66,17 @@ def get_multi_params(*, HttpMethod_type: HttpMethod, first, second):
 
 _LOGGER.info(f"Serving server on http://localhost:{PORT}")
 WebApp.serve_forever()
+
+
+class Ollare:
+    prova: str = "Ollare"
+
+    @RestWebserver.route("/class/function")
+    def swag(self, *, HttpMethod_type: HttpMethod):
+        return {
+            "HttpMethod_type": str(HttpMethod_type),
+            "message": f"function called in class, look!! {self.prova=}",
+        }
+
+
+ollare = Ollare()
