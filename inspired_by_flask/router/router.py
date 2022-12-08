@@ -8,7 +8,6 @@ from typing import Any, Generic, TypeVar, Callable, Iterator
 from re import compile
 from collections import defaultdict
 from abc import ABC, abstractmethod
-from urllib.parse import urljoin
 
 _URL_PARAMS_FINDER = compile(r"(\<.+?\>)")
 _URL_PARAMS_TYPE_FINDER = compile(r"\<((?P<type>.+):)?(?P<name>.+){1}\>")
@@ -46,19 +45,17 @@ class UrlParamFormatter(Generic[T]):
         return self.converter(value)
 
 
-def parse_url(url_format: str, url: str) -> dict[str, str]:
+def parse_url(url_format: list[str], url: list[str]) -> dict[str, str]:
     """
-    from format /url/format/<int:name1>/<name2>
-    url="/url/format/1/oh_yeah" -> return {"name1": "1", "name2": "oh_yeah"}
-    url="/url/format/1" -> raise UrlFormatError("url missformatted")
+    from format /url/format/<int:name1>/<name2> passed as ["url","format","<int:name1>","<name2>"]
+    url=["url","format","1","oh_yeah"] -> return {"name1": "1", "name2": "oh_yeah"}
+    url=["url","format","1"] -> raise UrlFormatError("url missformatted")
     """
     params_dict = {}
-    url_format_list = url_format.split("/")
-    url_list = url.split("/")
-    if len(url_format_list) != len(url_list):
+    if len(url_format) != len(url):
         raise UrlFormatError(f"len of format url is different from given url")
 
-    for format_part, request_part in zip(url_format_list, url_list):
+    for format_part, request_part in zip(url_format, url):
         if format_part == request_part:
             continue
         param = _URL_PARAMS_TYPE_FINDER.match(format_part)
@@ -86,19 +83,21 @@ def from_url_get_required_params(url_format: str) -> dict[str, UrlParamFormatter
     return params_formatters
 
 
-def from_url_get_required_params_names(url_format: str) -> Iterator[str]:
+def from_url_get_required_params_names(url_format: list[str]) -> Iterator[str]:
     """
-    from format /url/format/<int:name1>/<name2>
+    from format ["url","format","<int:name1>","<name2>"]
     return Iterator("name1","name2")
     """
-    for param in _URL_PARAMS_FINDER.findall(url_format):
+    for param in url_format:
         param = _URL_PARAMS_TYPE_FINDER.match(param)
+        if not param:
+            continue
         yield param.group("name")
 
 
 class Route(ABC):
-    mapped_url: str = ""
-    accepted_methods: list[HttpMethod] = []
+    mapped_url: list[str] = []
+    accepted_methods: set[HttpMethod] = []
 
     @abstractmethod
     def __init__(self) -> None:
@@ -108,7 +107,7 @@ class Route(ABC):
         if issubclass(__o.__class__, Route):
             return (
                 self.mapped_url == __o.mapped_url
-                and self.accepted_methods == __o.accepted_methods
+                and self.accepted_methods & __o.accepted_methods
             )
         else:
             raise ValueError(f"== not supported for type {type(__o)}")
@@ -117,11 +116,11 @@ class Route(ABC):
         return method in self.accepted_methods
 
     @abstractmethod
-    def validate_url(self, url: str) -> bool:
+    def validate_url(self, url: list[str]) -> bool:
         raise NotImplementedError()
 
     @abstractmethod
-    def parse_url(self, url: str) -> tuple[Callable, dict]:
+    def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
         raise NotImplementedError()
 
 
@@ -133,14 +132,14 @@ class SimpleRoute(Route):
         self,
         url: str,
         handler: Callable,
-        accepted_methods: list[HttpMethod],
+        accepted_methods: set[HttpMethod],
     ) -> None:
-        self.mapped_url = url
+        self.mapped_url = url.split("/")
         self.accepted_methods = accepted_methods
         self.__reqired_url_params = from_url_get_required_params(url)
         self.handler = handler
 
-    def validate_url(self, url: str) -> bool:
+    def validate_url(self, url: list[str]) -> bool:
         try:
             return all(
                 self.__reqired_url_params[key].is_convertable(value)
@@ -149,7 +148,7 @@ class SimpleRoute(Route):
         except UrlFormatError:
             return False
 
-    def parse_url(self, url: "str") -> tuple[Callable, dict]:
+    def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
         return (
             self.handler,
             {
@@ -167,49 +166,44 @@ class DefaultRoute(SimpleRoute):
     ) -> None:
         super().__init__(url, handler, [])
 
-    def parse_url(self, url: "str") -> tuple[Callable, None]:
+    def parse_url(self, url: list[str]) -> tuple[Callable, None]:
         return self.handler, None
 
 
 class NestedRoute(Route):
     mapped_route: Route
-    __default_url_params_str: str = {}
+    __default_url_params_str: list[str] = []
 
     def __init__(
         self,
         url: str,
         mapped_route: SimpleRoute,
-        accepted_methods: list[HttpMethod],
+        accepted_methods: set[HttpMethod],
         default_url_params: dict[str, Any],
     ) -> None:
-        self.mapped_url = url
+        self.mapped_url = url.split("/")
         self.accepted_methods = accepted_methods
         # extract url params names in order so we can append in the url
         # the default values in the correct order
         self.mapped_route = mapped_route
-        self.__default_url_params_str = "/".join(
-            (
-                str(default_url_params[param_name])
-                for param_name in from_url_get_required_params_names(
-                    self.mapped_route.mapped_url
-                )
-                if param_name in default_url_params
+        self.__default_url_params_str = [
+            str(default_url_params[param_name])
+            for param_name in from_url_get_required_params_names(
+                self.mapped_route.mapped_url
             )
-        )
+            if param_name in default_url_params
+        ]
 
-    def validate_url(self, url: str) -> bool:
-        return self.mapped_route.validate_url(
-            urljoin(url + "/", self.__default_url_params_str)
-        )
+    def validate_url(self, url: list[str]) -> bool:
+        return self.mapped_route.validate_url(url + self.__default_url_params_str)
 
-    def parse_url(self, url: "str") -> tuple[Callable, dict]:
-        return self.mapped_route.parse_url(
-            urljoin(url + "/", self.__default_url_params_str)
-        )
+    def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
+        return self.mapped_route.parse_url(url + self.__default_url_params_str)
 
 
 class RouteSet:
-    __all_routes: list[Route] = []
+    # maps url's length to a list of url with that length
+    __all_routes: dict[int, list[Route]] = {}
     __default_route: DefaultRoute = None
 
     def __init__(self, default_route: DefaultRoute) -> None:
@@ -219,18 +213,23 @@ class RouteSet:
         self.__default_route.handler = default_handler
 
     def add_route(self, new_route: Route) -> bool:
-        for route in self.__all_routes:
+        url_length = len(new_route.mapped_url)
+        if not self.__all_routes.get(url_length, None):
+            self.__all_routes[url_length] = []
+
+        # check if url is alredy mapped
+        for route in self.__all_routes[url_length]:
             if route == new_route:
                 return False
 
-        self.__all_routes.append(new_route)
+        self.__all_routes[url_length].append(new_route)
         return True
 
-    def get_route(self, __url: str, method: HttpMethod) -> Route:
+    def get_route(self, __url: list[str], method: HttpMethod) -> Route:
         return next(
             filter(
                 lambda x: x.validate_method(method) and x.validate_url(__url),
-                self.__all_routes,
+                self.__all_routes.get(len(__url), []),
             ),
             self.__default_route,
         )
@@ -278,7 +277,8 @@ class Router(metaclass=SingletonMeta):
         get handler for specified __url and method
         if return is Callable,None, the default_handler is returned
         """
-        return self.routes.get_route(__url, method).parse_url(__url)
+        __url_list = __url.split("/")
+        return self.routes.get_route(__url_list, method).parse_url(__url_list)
 
     def add_route(
         self,
@@ -292,9 +292,9 @@ class Router(metaclass=SingletonMeta):
         if isinstance(handler, SimpleRoute):
             if not default_params:
                 raise ValueError("for NestedRoute default_params are required")
-            new_route = NestedRoute(url, handler, accepted_methods, default_params)
+            new_route = NestedRoute(url, handler, set(accepted_methods), default_params)
         elif isinstance(handler, Callable):
-            new_route = SimpleRoute(url, handler, accepted_methods)
+            new_route = SimpleRoute(url, handler, set(accepted_methods))
         else:
             raise ValueError(
                 f"routing not implemented for handler of type {type(handler)}"
@@ -344,4 +344,7 @@ if __name__ == "__main__":
     handler(**params)
     handler, params = router.get_handler("/test/1", HttpMethod.POST)
     handler(**params)
+    handler, params = router.get_handler("/test/shish", HttpMethod.POST)
+    assert params is None, "this should be the default handler"
+    handler()
     pass
