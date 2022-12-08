@@ -1,13 +1,9 @@
-try:
-    from .http_utils import HttpMethod
-except ImportError:
-    # for testing
-    from http_utils import HttpMethod
-
+from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar, Callable, Iterator
 from re import compile
 from collections import defaultdict
-from abc import ABC, abstractmethod
+
+from .http_method import HttpMethod
 
 _URL_PARAMS_FINDER = compile(r"(\<.+?\>)")
 _URL_PARAMS_TYPE_FINDER = compile(r"\<((?P<type>.+):)?(?P<name>.+){1}\>")
@@ -101,7 +97,7 @@ def from_url_get_required_params_names(url_format: list[str]) -> Iterator[str]:
 
 class Route(ABC):
     mapped_url: list[str] = []
-    accepted_methods: set[HttpMethod] = []
+    accepted_methods: set["HttpMethod"] = []
 
     @abstractmethod
     def __init__(self) -> None:
@@ -116,7 +112,7 @@ class Route(ABC):
         else:
             raise ValueError(f"== not supported for type {type(__o)}")
 
-    def validate_method(self, method: HttpMethod):
+    def validate_method(self, method: "HttpMethod"):
         return method in self.accepted_methods
 
     @abstractmethod
@@ -136,7 +132,7 @@ class SimpleRoute(Route):
         self,
         url: str,
         handler: Callable,
-        accepted_methods: set[HttpMethod],
+        accepted_methods: set["HttpMethod"],
     ) -> None:
         self.mapped_url = url.split("/")
         self.accepted_methods = accepted_methods
@@ -170,7 +166,7 @@ class NestedRoute(Route):
         self,
         url: str,
         mapped_route: SimpleRoute,
-        accepted_methods: set[HttpMethod],
+        accepted_methods: set["HttpMethod"],
         default_url_params: dict[str, Any],
     ) -> None:
         self.mapped_url = url.split("/")
@@ -191,140 +187,3 @@ class NestedRoute(Route):
 
     def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
         return self.mapped_route.parse_url(url + self.__default_url_params_str)
-
-
-class RouteSet:
-    # maps url's length to a list of url with that length
-    __all_routes: dict[int, list[Route]] = {}
-
-    def add_route(self, new_route: Route) -> bool:
-        url_length = len(new_route.mapped_url)
-        if not self.__all_routes.get(url_length, None):
-            self.__all_routes[url_length] = []
-
-        # check if url is alredy mapped
-        for route in self.__all_routes[url_length]:
-            if route == new_route:
-                return False
-
-        self.__all_routes[url_length].append(new_route)
-        return True
-
-    def get_route(self, __url: list[str], method: HttpMethod) -> Route:
-        return next(
-            filter(
-                lambda x: x.validate_method(method) and x.validate_url(__url),
-                self.__all_routes.get(len(__url), []),
-            )
-        )
-
-
-class SingletonMeta(type):
-    """
-    Usage:\n
-        class myclass(metaclass = SingletonMeta):
-            ...
-
-    """
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        """
-        Possible changes to the values of the `__init__` arguments do not affect
-        the returned instance.
-        """
-        if cls not in cls._instances:
-            if cls not in cls._instances:
-                instance = super().__call__(*args, **kwargs)
-                cls._instances[cls] = instance
-        return cls._instances[cls]
-
-
-class Router(metaclass=SingletonMeta):
-    routes: RouteSet = None
-
-    def __init__(self) -> None:
-        self.routes = RouteSet()
-
-    def get_handler(
-        self, __url: str, method: HttpMethod
-    ) -> tuple[Callable, dict | None]:
-        """
-        get handler for specified __url and method
-        if return is Callable,None, the default_handler is returned
-        """
-        __url_list = __url.split("/")
-        try:
-            return self.routes.get_route(__url_list, method).parse_url(__url_list)
-        except StopIteration:
-            raise RouteNotFoundError(f"url: {__url} and method: {method} not routed")
-
-    def add_route(
-        self,
-        url: str,
-        handler: Callable | Route,
-        accepted_methods: list[HttpMethod] = [HttpMethod.GET],
-        default_params: dict[str, Any] = {},
-    ) -> Route:
-
-        new_route = None
-        if isinstance(handler, SimpleRoute):
-            if not default_params:
-                raise ValueError("for NestedRoute default_params are required")
-            new_route = NestedRoute(url, handler, set(accepted_methods), default_params)
-        elif isinstance(handler, Callable):
-            new_route = SimpleRoute(url, handler, set(accepted_methods))
-        else:
-            raise ValueError(
-                f"routing not implemented for handler of type {type(handler)}"
-            )
-
-        self.routes.add_route(new_route)
-        return new_route
-
-    def route(
-        self,
-        url: str,
-        accepted_methods: list[HttpMethod] = [HttpMethod.GET],
-        default_params: dict[str, Any] = {},
-    ) -> Route:
-        """decorator, same functionality of add_route"""
-
-        def decorate(handler):
-            return self.add_route(url, handler, accepted_methods, default_params)
-
-        return decorate
-
-
-if __name__ == "__main__":
-    # testing code
-    router = Router(lambda: print("DEFAULT HANDLER"))
-    router.add_route(
-        "/test/this/url", lambda x: print(f"GET /test/this/url {x}"), [HttpMethod.GET]
-    )
-    router.add_route(
-        "/test/this/url", lambda x: print(f"POST /test/this/url {x}"), [HttpMethod.POST]
-    )
-
-    @router.route(
-        "/test/<int:this>",
-        [HttpMethod.GET, HttpMethod.POST],
-        {"url": "bar"},
-    )
-    @router.route("/test/<int:this>/<url>", [HttpMethod.GET, HttpMethod.POST])
-    def oll(this=None, url=None):
-        print(f"handler POST/GET parameters {this=}  {url=}")
-
-    handler, params = router.get_handler("/test/this/url", HttpMethod.GET)
-    handler(params)
-    handler, params = router.get_handler("/test/this/url", HttpMethod.POST)
-    handler(params)
-    handler, params = router.get_handler("/test/1/foo", HttpMethod.POST)
-    handler(**params)
-    handler, params = router.get_handler("/test/1", HttpMethod.POST)
-    handler(**params)
-    handler, params = router.get_handler("/test/shish", HttpMethod.POST)
-    assert params is None, "this should be the default handler"
-    handler()
-    pass
