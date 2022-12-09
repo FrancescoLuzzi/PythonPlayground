@@ -124,10 +124,6 @@ class Route(ABC):
     def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
         raise NotImplementedError()
 
-    @abstractmethod
-    def __call__(self, *args, **kwargs) -> Any:
-        raise NotImplementedError()
-
 
 class SimpleRoute(Route):
     handler: Callable = print
