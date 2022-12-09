@@ -37,3 +37,23 @@ GET http://localhost:8000/multi_params/foo HTTP/1.1
 
 GET http://localhost:8000/multi_params/foo/12 HTTP/1.1
 
+###
+
+GET http://localhost:8000/class/558/function/this_works HTTP/1.1
+
+###
+
+POST http://localhost:8000/class/558/function HTTP/1.1
+content-type: application/json
+
+{
+    "message": "Post works with methods"
+}
+
+###
+
+GET http://localhost:8000/class/558/multi_params/oppala HTTP/1.1
+
+###
+
+GET http://localhost:8000/class/558/multi_params/oppala/2 HTTP/1.1

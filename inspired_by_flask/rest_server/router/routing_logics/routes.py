@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar, Callable, Iterator
-from re import compile
 from collections import defaultdict
+from functools import update_wrapper
+from re import compile
+from typing import Any, Callable, Generic, Iterator, TypeVar
 
 from .http_method import HttpMethod
 
@@ -123,6 +124,10 @@ class Route(ABC):
     def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
         raise NotImplementedError()
 
+    @abstractmethod
+    def __call__(self, *args, **kwargs) -> Any:
+        raise NotImplementedError()
+
 
 class SimpleRoute(Route):
     handler: Callable = print
@@ -138,6 +143,7 @@ class SimpleRoute(Route):
         self.accepted_methods = accepted_methods
         self.__reqired_url_params = from_url_get_required_params(url)
         self.handler = handler
+        update_wrapper(wrapper=self, wrapped=self.handler)
 
     def validate_url(self, url: list[str]) -> bool:
         try:
@@ -156,6 +162,9 @@ class SimpleRoute(Route):
                 for key, value in parse_url(self.mapped_url, url).items()
             },
         )
+
+    def __call__(self, *args, **kwargs) -> Any:
+        return self.handler(*args, **kwargs)
 
 
 class NestedRoute(Route):
@@ -181,9 +190,13 @@ class NestedRoute(Route):
             )
             if param_name in default_url_params
         ]
+        update_wrapper(wrapper=self, wrapped=self.mapped_route.handler)
 
     def validate_url(self, url: list[str]) -> bool:
         return self.mapped_route.validate_url(url + self.__default_url_params_str)
 
     def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
         return self.mapped_route.parse_url(url + self.__default_url_params_str)
+
+    def __call__(self, *args, **kwargs) -> Any:
+        return self.mapped_route(*args, **kwargs)

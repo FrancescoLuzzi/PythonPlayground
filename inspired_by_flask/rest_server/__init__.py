@@ -1,14 +1,13 @@
-from os import environ
+import json
 import logging
 import socketserver
-import json
-from http.server import BaseHTTPRequestHandler
-from typing import Any
 from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler
+from os import environ
+from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
-from .router import Router, RouteNotFoundError
-from .router import HttpMethod
 
+from .router import HttpMethod, Route, RouteNotFoundError, Router
 
 _LOGGER = logging.getLogger(__name__)
 _FAVICO_CONTENT = b""
@@ -48,9 +47,9 @@ class RestWebserver(BaseHTTPRequestHandler):
         url: str,
         methods: list[HttpMethod] = [HttpMethod.GET],
         default_params: dict[str, Any] = {},
-    ) -> "function":
+    ) -> Route:
         """
-        Classmethod to route an url to a function.\n
+        Classmethod decorator to route an url to a function.\n
         All functions should follow this implementation kwargs only:\n
 
 
@@ -71,9 +70,53 @@ class RestWebserver(BaseHTTPRequestHandler):
         """
 
         def decorator(func):
-            return Router().add_route(url, func, methods, default_params)
+            return cls.route_method(func, url, methods, default_params)
 
         return decorator
+
+    @classmethod
+    def route_method(
+        cls,
+        func: Callable,
+        url: str,
+        methods: list[HttpMethod] = [HttpMethod.GET],
+        default_params: dict[str, Any] = {},
+    ) -> Route:
+        """
+        Classmethod to route an url to a method of a class.\n
+        All method should follow this implementation kwargs only other that self param:\n
+
+
+        class Foo:\n
+            self_param: str = "Bar"\n
+            __my_id: int = 0\n
+
+            def __init__(self, id:int) -> None:\n
+                self.__my_id = id\n
+                RestWebserver.route_method(\n
+                    self.get_simple_response, f"/class/{self.__my_id}/function"\n
+                )\n
+                RestWebserver.route_method(\n
+                    self.post_simple_response,\n
+                    f"/class/{self.__my_id}/function",\n
+                    [HttpMethod.POST],\n
+                )\n
+
+            def get_simple_response(self, *, HttpMethod_type: HttpMethod):\n
+                return {\n
+                    "HttpMethod_type": str(HttpMethod_type),\n
+                    "message": f"function called in class, look!! {self.self_param=}",\n
+                }\n
+
+            def post_simple_response(self, *, HttpMethod_type: HttpMethod, bar:str):\n
+                return {\n
+                    "HttpMethod_type": str(HttpMethod_type),\n
+                    "message": f"function called in class, look!! {self.self_param=}",\n
+                    "you_sent": bar\n
+                }\n
+
+        """
+        return Router().add_route(url, func, methods, default_params)
 
     def __send_headers(self, http_code: HTTPStatus = HTTPStatus.OK):
         self.send_response(http_code.value)

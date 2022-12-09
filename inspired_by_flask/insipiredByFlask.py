@@ -9,14 +9,13 @@ logging.basicConfig(
     handlers=[stream_handler],
 )
 from http.server import HTTPServer
-from os import environ
 from os.path import dirname, join
 
-# environ["FAVICO_PATH"] = join(dirname(__file__), "favicon.ico")
-from rest_server import RestWebserver, HttpMethod
-
 from dotenv import load_dotenv
+from os import environ
 
+# environ["FAVICO_PATH"] = join(dirname(__file__), "favicon.ico")
+from rest_server import HttpMethod, RestWebserver, Router
 
 _LOGGER = logging.getLogger("inspired_by_flask")
 
@@ -63,6 +62,59 @@ def get_multi_params(*, HttpMethod_type: HttpMethod, first, second):
         "second": second,
     }
 
+
+class Foo:
+    self_param: str = "Bar"
+    __my_id: int = 0
+
+    def __init__(self, id: int) -> None:
+        self.__my_id = id
+        RestWebserver.route_method(
+            self.get_simple_response, f"/class/{self.__my_id}/function/<bar>"
+        )
+        RestWebserver.route_method(
+            self.post_simple_response,
+            f"/class/{self.__my_id}/function",
+            [HttpMethod.POST],
+        )
+        temp_route = RestWebserver.route_method(
+            self.get_multi_response,
+            f"/class/{self.__my_id}/multi_params/<first>/<int:second>",
+            [HttpMethod.GET],
+        )
+        RestWebserver.route_method(
+            temp_route,
+            f"/class/{self.__my_id}/multi_params/<first>",
+            [HttpMethod.GET],
+            {"second": 42},
+        )
+
+    def get_simple_response(self, *, HttpMethod_type: HttpMethod, bar: str):
+        return {
+            "HttpMethod_type": str(HttpMethod_type),
+            "message": f"function called in class, look!! {self.self_param=}",
+            "bar": bar,
+        }
+
+    def post_simple_response(self, *, HttpMethod_type: HttpMethod, message: str):
+        return {
+            "HttpMethod_type": str(HttpMethod_type),
+            "message": f"function called in class, look!! {self.self_param=}",
+            "message_received": message,
+        }
+
+    def get_multi_response(
+        self, *, HttpMethod_type: HttpMethod, first: str, second: int
+    ):
+        return {
+            "HttpMethod_type": str(HttpMethod_type),
+            "message": f"function called in class, look!! {self.self_param=}",
+            "first": first,
+            "second": second,
+        }
+
+
+ollare = Foo(558)
 
 _LOGGER.info(f"Serving server on http://localhost:{PORT}")
 WebApp.serve_forever()
