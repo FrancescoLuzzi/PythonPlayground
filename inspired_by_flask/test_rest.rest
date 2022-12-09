@@ -10,6 +10,13 @@ content-type: application/json
 
 GET  http://localhost:8000/favicon.ico HTTP/1.1
 
+###
+
+GET  http://localhost:8000 HTTP/1.1
+
+###
+
+GET  http://localhost:8000/foo?foo=bar HTTP/1.1
 
 ###
 

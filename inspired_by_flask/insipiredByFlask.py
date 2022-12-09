@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from os import environ
 
 # environ["FAVICO_PATH"] = join(dirname(__file__), "favicon.ico")
-from rest_server import HttpMethod, RestWebserver, Router
+from rest_server import HttpMethod, RestWebserver
 
 _LOGGER = logging.getLogger("inspired_by_flask")
 
@@ -115,6 +115,7 @@ class Foo:
 
 
 ollare = Foo(558)
+
 
 _LOGGER.info(f"Serving server on http://localhost:{PORT}")
 WebApp.serve_forever()
