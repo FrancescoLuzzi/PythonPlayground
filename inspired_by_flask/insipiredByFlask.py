@@ -32,12 +32,12 @@ def get_ollare(**kwargs):
     return {"response": "HelloWorld!"}
 
 
-@RestWebserver.route("/foo", [HttpMethod.GET])
+@RestWebserver.get("/foo")
 def get_ollare(*, foo=[], **kwargs):
     return {"response": "GET HelloWorld!", "foo": foo}
 
 
-@RestWebserver.route("/foo", [HttpMethod.POST])
+@RestWebserver.post("/foo")
 def post_ollare(*, name, surname, **kwargs):
     _LOGGER.info("POST")
     return {"response": "POST HelloWorld!", "name": name, "surname": surname}
