@@ -75,6 +75,50 @@ class RestWebserver(BaseHTTPRequestHandler):
         return decorator
 
     @classmethod
+    def post(
+        cls,
+        url: str,
+        default_params: dict[str, Any] = {},
+    ) -> Route:
+        """
+        Classmethod decorator to route an POST request of an url to a function.\n
+        All functions should follow this implementation kwargs only:\n
+
+        @RestWebserver.post("url", [HttpMethod.POST])\n
+        def post_url(*, param1, param2, **kwargs):\n
+
+        If some parameters are missing raise TypeError with a meaningful error description
+        """
+
+        def decorator(func):
+            return cls.route_method(func, url, [HttpMethod.POST], default_params)
+
+        return decorator
+
+    @classmethod
+    def get(
+        cls,
+        url: str,
+        default_params: dict[str, Any] = {},
+    ) -> Route:
+        """
+        Classmethod decorator to route an GET request of an url to a function.\n
+        All functions should follow this implementation kwargs only:\n
+
+        @RestWebserver.get("url")\n
+        def get_url(**kwargs):\n
+        or if this GET request accepts parameters\n
+        def get_url(*, param1 = [], param2 = [], **kwargs):\n
+
+        If some parameters are missing raise TypeError with a meaningful error description
+        """
+
+        def decorator(func):
+            return cls.route_method(func, url, [HttpMethod.GET], default_params)
+
+        return decorator
+
+    @classmethod
     def route_method(
         cls,
         func: Callable,
