@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from os import environ
 
 # environ["FAVICO_PATH"] = join(dirname(__file__), "favicon.ico")
-from rest_server import HttpMethod, RestWebserver
+from rest_server import HttpMethod, RouteWebserver
 
 _LOGGER = logging.getLogger("inspired_by_flask")
 
@@ -24,26 +24,26 @@ load_dotenv(DOTENV_PATH)
 PORT = int(environ.get("APP_PORT", 8000))
 
 
-WebApp = HTTPServer(("0.0.0.0", PORT), RestWebserver)
+WebApp = HTTPServer(("0.0.0.0", PORT), RouteWebserver)
 
 
-@RestWebserver.route("/", [HttpMethod.GET])
+@RouteWebserver.route("/", [HttpMethod.GET])
 def get_ollare(**kwargs):
     return {"response": "HelloWorld!"}
 
 
-@RestWebserver.get("/foo")
+@RouteWebserver.get("/foo")
 def get_ollare(*, foo=[], **kwargs):
     return {"response": "GET HelloWorld!", "foo": foo}
 
 
-@RestWebserver.post("/foo")
+@RouteWebserver.post("/foo")
 def post_ollare(*, name, surname, **kwargs):
     _LOGGER.info("POST")
     return {"response": "POST HelloWorld!", "name": name, "surname": surname}
 
 
-@RestWebserver.route("/bar", [HttpMethod.GET, HttpMethod.POST])
+@RouteWebserver.route("/bar", [HttpMethod.GET, HttpMethod.POST])
 def get_post_swag_stuff(*, HttpMethod_type: HttpMethod, foo=[], bar=[], **kwargs):
     return {
         "response": f"{HttpMethod_type} HelloWorld!",
@@ -53,8 +53,8 @@ def get_post_swag_stuff(*, HttpMethod_type: HttpMethod, foo=[], bar=[], **kwargs
     }
 
 
-@RestWebserver.route("/multi_params/<first>", default_params={"second": 57})
-@RestWebserver.route("/multi_params/<first>/<int:second>")
+@RouteWebserver.route("/multi_params/<first>", default_params={"second": 57})
+@RouteWebserver.route("/multi_params/<first>/<int:second>")
 def get_multi_params(*, HttpMethod_type: HttpMethod, first, second):
     return {
         "HttpMethod_type": str(HttpMethod_type),
@@ -69,20 +69,20 @@ class Foo:
 
     def __init__(self, id: int) -> None:
         self.__my_id = id
-        RestWebserver.route_method(
+        RouteWebserver.route_method(
             self.get_simple_response, f"/class/{self.__my_id}/function/<bar>"
         )
-        RestWebserver.route_method(
+        RouteWebserver.route_method(
             self.post_simple_response,
             f"/class/{self.__my_id}/function",
             [HttpMethod.POST],
         )
-        temp_route = RestWebserver.route_method(
+        temp_route = RouteWebserver.route_method(
             self.get_multi_response,
             f"/class/{self.__my_id}/multi_params/<first>/<int:second>",
             [HttpMethod.GET],
         )
-        RestWebserver.route_method(
+        RouteWebserver.route_method(
             temp_route,
             f"/class/{self.__my_id}/multi_params/<first>",
             [HttpMethod.GET],
