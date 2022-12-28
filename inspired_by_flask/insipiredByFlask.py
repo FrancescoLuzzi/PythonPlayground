@@ -14,8 +14,8 @@ from os.path import dirname, join
 from dotenv import load_dotenv
 from os import environ
 
-# environ["FAVICO_PATH"] = join(dirname(__file__), "favicon.ico")
-from rest_server import HttpMethod, RouteWebserver
+environ["FAVICO_PATH"] = join(dirname(__file__), "favicon.ico")
+from rest_server import HttpMethod, RouteWebserver, BadRequestException
 
 _LOGGER = logging.getLogger("inspired_by_flask")
 
@@ -45,6 +45,8 @@ def post_ollare(*, name, surname, **kwargs):
 
 @RouteWebserver.route("/bar", [HttpMethod.GET, HttpMethod.POST])
 def get_post_swag_stuff(*, HttpMethod_type: HttpMethod, foo=[], bar=[], **kwargs):
+    if not (bar and foo):
+        raise BadRequestException("missing parameters foo or bar!")
     return {
         "response": f"{HttpMethod_type} HelloWorld!",
         "HttpMethod_type": str(HttpMethod_type),

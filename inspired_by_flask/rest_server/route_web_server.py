@@ -9,6 +9,11 @@ from urllib.parse import parse_qs, urlparse
 
 from .router import HttpMethod, Route, RouteNotFoundError, Router
 
+
+class BadRequestException(Exception):
+    pass
+
+
 _LOGGER = logging.getLogger(__name__)
 _FAVICO_CONTENT = b""
 try:
@@ -66,7 +71,8 @@ class RouteWebserver(BaseHTTPRequestHandler):
         def get_post_url(*,HttpMethod_type: HttpMethod, param1=[], param2=[], **kwargs):\n
 
 
-        If some parameters are missing raise TypeError with a meaningful error description
+        To communicate wrong infos passed raise BadRequestException, returning 501 BAD_REQUEST.
+        Other exceptions will return 500 INTERNAL_SERVER_ERROR
         """
 
         def decorator(func):
@@ -87,7 +93,8 @@ class RouteWebserver(BaseHTTPRequestHandler):
         @RouteWebserver.post("url", [HttpMethod.POST])\n
         def post_url(*, param1, param2, **kwargs):\n
 
-        If some parameters are missing raise TypeError with a meaningful error description
+        To communicate wrong infos passed raise BadRequestException, returning 501 BAD_REQUEST.
+        Other exceptions will return 500 INTERNAL_SERVER_ERROR
         """
 
         def decorator(func):
@@ -110,7 +117,8 @@ class RouteWebserver(BaseHTTPRequestHandler):
         or if this GET request accepts parameters\n
         def get_url(*, param1 = [], param2 = [], **kwargs):\n
 
-        If some parameters are missing raise TypeError with a meaningful error description
+        To communicate wrong infos passed raise BadRequestException, returning 501 BAD_REQUEST.
+        Other exceptions will return 500 INTERNAL_SERVER_ERROR
         """
 
         def decorator(func):
@@ -159,6 +167,8 @@ class RouteWebserver(BaseHTTPRequestHandler):
                     "you_sent": bar\n
                 }\n
 
+        To communicate wrong infos passed raise BadRequestException, returning 501 BAD_REQUEST.
+        Other exceptions will return 500 INTERNAL_SERVER_ERROR
         """
         return Router().add_route(url, func, methods, default_params)
 
@@ -197,8 +207,12 @@ class RouteWebserver(BaseHTTPRequestHandler):
         try:
             params = {**get_params, **params}
             self.__send_json_response(handler(**params))
-        except TypeError as e:
+        except BadRequestException as e:
             self.__send_json_response({"error": str(e)}, HTTPStatus.BAD_REQUEST)
+        except Exception as e:
+            self.__send_json_response(
+                {"error": str(e)}, HTTPStatus.INTERNAL_SERVER_ERROR
+            )
 
     def do_POST(self):
         url = self.path
@@ -223,5 +237,9 @@ class RouteWebserver(BaseHTTPRequestHandler):
         try:
             params = {**post_params, **params}
             self.__send_json_response(handler(**params))
-        except TypeError as e:
+        except BadRequestException as e:
             self.__send_json_response({"error": str(e)}, HTTPStatus.BAD_REQUEST)
+        except Exception as e:
+            self.__send_json_response(
+                {"error": str(e)}, HTTPStatus.INTERNAL_SERVER_ERROR
+            )
