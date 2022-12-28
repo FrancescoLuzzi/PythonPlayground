@@ -1,3 +1,22 @@
+# test /favicon.ico
+GET  http://localhost:8000/favicon.ico HTTP/1.1
+
+
+###
+
+# test GET /
+GET  http://localhost:8000 HTTP/1.1
+
+
+###
+
+# test GET /foo with URL parameters
+GET  http://localhost:8000/foo?foo=bar HTTP/1.1
+
+
+###
+
+# test POST /foo with JSON payload
 POST http://localhost:8000/foo HTTP/1.1
 content-type: application/json
 
@@ -6,29 +25,15 @@ content-type: application/json
     "surname": "Luzzi"
 }
 
-###
-
-GET  http://localhost:8000/favicon.ico HTTP/1.1
 
 ###
 
-GET  http://localhost:8000 HTTP/1.1
-
-###
-
-GET  http://localhost:8000/foo?foo=bar HTTP/1.1
-
-###
-
-GET  http://localhost:8000/foo/ollare?foo=foo HTTP/1.1
-
-
-###
-
+# test GET /bar with URL parameters
 GET  http://localhost:8000/bar?foo=hello,world&bar=bar HTTP/1.1
 
 ###
 
+# test POST /bar with JSON payload
 POST http://localhost:8000/bar HTTP/1.1
 content-type: application/json
 
@@ -36,20 +41,38 @@ content-type: application/json
     "foo": "foo",
     "bar": "bar"
 }
+
+
 ###
 
+# test non routed URL
+GET  http://localhost:8000/foo/random HTTP/1.1
+
+
+###
+
+# test GET accepting parameters embedded in URL with a missing and defaulted value
+# /multi_params/<first>/2
 GET http://localhost:8000/multi_params/foo HTTP/1.1
 
+
 ###
 
+# test GET accepting parameters embedded in URL with all requested values
+# /multi_params/<first>/<int:second>
 GET http://localhost:8000/multi_params/foo/12 HTTP/1.1
 
+
 ###
 
+# test GET calling a method of an instance of a class passing a parameter embedded in URL
+# /class/{object_id}/function/<bar>
 GET http://localhost:8000/class/558/function/this_works HTTP/1.1
 
+
 ###
 
+## test POST calling a method of an instance of a class with JSON payload
 POST http://localhost:8000/class/558/function HTTP/1.1
 content-type: application/json
 
@@ -57,10 +80,16 @@ content-type: application/json
     "message": "Post works with methods"
 }
 
+
 ###
 
+# test GET calling a method of an instance of a class passing a parameter embedded in URL with a missing and defaulted value
+# /class/{object_id}/multi_params/<first>/42
 GET http://localhost:8000/class/558/multi_params/oppala HTTP/1.1
 
+
 ###
 
+# test GET calling a method of an instance of a class passing a parameter embedded in URL with all values
+# /class/{object_id}/multi_params/<first>/<int:second>
 GET http://localhost:8000/class/558/multi_params/oppala/2 HTTP/1.1
