@@ -1,5 +1,5 @@
 from .routing_logics.route_logic import RouteLogic, SimpleRouteLogic
-from .routing_logics.routes import Route, SimpleRoute, NestedRoute
+from .routing_logics.routes import Route, SimpleRoute, NestedRoute, url_split
 from .routing_logics.http_method import HttpMethod
 from typing import Any, Callable
 
@@ -39,7 +39,7 @@ class Router(metaclass=SingletonMeta):
         get handler for specified __url and method
         if return is Callable,None, the default_handler is returned
         """
-        __url_list = __url.split("/")
+        __url_list = url_split(__url)
         return self.routes.get_route(__url_list, method).parse_url(__url_list)
 
     def add_route(
@@ -54,6 +54,10 @@ class Router(metaclass=SingletonMeta):
         if isinstance(handler, SimpleRoute):
             if not default_params:
                 raise ValueError("for NestedRoute default_params are required")
+            if not handler.has_url_params:
+                raise ValueError(
+                    "for NestedRoute the nested Route needs to have url params"
+                )
             new_route = NestedRoute(url, handler, set(accepted_methods), default_params)
         elif isinstance(handler, Callable):
             new_route = SimpleRoute(url, handler, set(accepted_methods))

@@ -42,6 +42,10 @@ class UrlParamFormatter(Generic[T]):
         return self.converter(value)
 
 
+def url_split(url: str) -> list[str]:
+    return url.split("/")[1:]
+
+
 def parse_url(url_format: list[str], url: list[str]) -> dict[str, str]:
     """
     from format /url/format/<int:name1>/<name2> passed as ["url","format","<int:name1>","<name2>"]
@@ -67,7 +71,8 @@ def parse_url(url_format: list[str], url: list[str]) -> dict[str, str]:
 def from_url_get_required_params(url_format: str) -> dict[str, UrlParamFormatter]:
     """
     from format /url/format/<int:name1>/<name2>
-    url="/url/format/1/oh_yeah" -> return {"name1": UrlParamFormatter[int], "name2": UrlParamFormatter[str]}
+
+    return {"name1": UrlParamFormatter[int], "name2": UrlParamFormatter[str]}
     """
     params_formatters = {}
     for param in _URL_PARAMS_FINDER.findall(url_format):
@@ -78,6 +83,15 @@ def from_url_get_required_params(url_format: str) -> dict[str, UrlParamFormatter
             param_type
         )
     return params_formatters
+
+
+def url_contains_params(url_format: str) -> bool:
+    """
+    from format /url/format/<int:name1>/<name2>
+
+    return True
+    """
+    return bool(_URL_PARAMS_FINDER.findall(url_format))
 
 
 def from_url_get_required_params_names(url_format: list[str]) -> Iterator[str]:
@@ -131,11 +145,15 @@ class SimpleRoute(Route):
         handler: Callable,
         accepted_methods: set["HttpMethod"],
     ) -> None:
-        self.mapped_url = url.split("/")
+        self.mapped_url = url_split(url)
         self.accepted_methods = accepted_methods
         self.__reqired_url_params = from_url_get_required_params(url)
         self.handler = handler
         update_wrapper(wrapper=self, wrapped=self.handler)
+
+    @property
+    def has_url_params(self) -> bool:
+        return bool(self.__reqired_url_params)
 
     def validate_url(self, url: list[str]) -> bool:
         try:
@@ -170,7 +188,7 @@ class NestedRoute(Route):
         accepted_methods: set["HttpMethod"],
         default_url_params: dict[str, Any],
     ) -> None:
-        self.mapped_url = url.split("/")
+        self.mapped_url = url_split(url)
         self.accepted_methods = accepted_methods
         # extract url params names in order so we can append in the url
         # the default values in the correct order
@@ -183,6 +201,10 @@ class NestedRoute(Route):
             if param_name in default_url_params
         ]
         update_wrapper(wrapper=self, wrapped=self.mapped_route.handler)
+
+    @property
+    def has_url_params(self) -> bool:
+        return True
 
     def validate_url(self, url: list[str]) -> bool:
         return self.mapped_route.validate_url(url + self.__default_url_params_str)
