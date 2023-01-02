@@ -54,7 +54,9 @@ def parse_url(url_format: list[str], url: list[str]) -> dict[str, str]:
     """
     params_dict = {}
     if len(url_format) != len(url):
-        raise UrlFormatError(f"len of format url is different from given url")
+        raise UrlFormatError(
+            f"len of format url is different from given url\n{url_format=}\n{url=}"
+        )
 
     for format_part, request_part in zip(url_format, url):
         if format_part == request_part:
@@ -125,6 +127,11 @@ class Route(ABC):
 
     def validate_method(self, method: "HttpMethod"):
         return method in self.accepted_methods
+
+    @property
+    @abstractmethod
+    def has_url_params(self):
+        raise NotImplementedError()
 
     @abstractmethod
     def validate_url(self, url: list[str]) -> bool:
