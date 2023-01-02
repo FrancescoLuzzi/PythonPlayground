@@ -52,7 +52,7 @@ GET  http://localhost:8000/foo/random HTTP/1.1
 ###
 
 # test GET accepting parameters embedded in URL with a missing and defaulted value
-# /multi_params/<first>/2
+# /multi_params/<first>/57
 GET http://localhost:8000/multi_params/foo HTTP/1.1
 
 
