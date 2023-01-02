@@ -1,4 +1,4 @@
-from .routing_logics.route_logic import RouteLogic, SimpleRouteLogic
+from .routing_logics.route_logic import RouteLogic, SimpleRouteLogic, GraphRouteLogic
 from .routing_logics.routes import Route, SimpleRoute, NestedRoute, url_split
 from .routing_logics.http_method import HttpMethod
 from typing import Any, Callable
@@ -30,7 +30,7 @@ class Router(metaclass=SingletonMeta):
     routes: RouteLogic = None
 
     def __init__(self) -> None:
-        self.routes = SimpleRouteLogic()
+        self.routes = GraphRouteLogic()
 
     def get_handler(
         self, __url: str, method: HttpMethod
