@@ -67,7 +67,7 @@ GET http://localhost:8000/multi_params/foo/12 HTTP/1.1
 
 # test GET calling a method of an instance of a class passing a parameter embedded in URL
 # /class/{object_id}/function/<bar>
-GET http://localhost:8000/class/558/function/this_works HTTP/1.1
+GET http://localhost:8000/class/558/function/this_works%20fine HTTP/1.1
 
 
 ###
