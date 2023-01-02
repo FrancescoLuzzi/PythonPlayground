@@ -85,7 +85,9 @@ class Router(metaclass=SingletonMeta):
 
 if __name__ == "__main__":
     # testing code
-    router = Router(lambda: print("DEFAULT HANDLER"))
+    from time import time
+
+    router = Router()
     router.add_route(
         "/test/this/url", lambda x: print(f"GET /test/this/url {x}"), [HttpMethod.GET]
     )
@@ -110,7 +112,28 @@ if __name__ == "__main__":
     handler(**params)
     handler, params = router.get_handler("/test/1", HttpMethod.POST)
     handler(**params)
-    handler, params = router.get_handler("/test/shish", HttpMethod.POST)
-    assert params is None, "this should be the default handler"
-    handler()
-    pass
+    try:
+        handerl, params = router.get_handler("/test/shish", HttpMethod.POST)
+    except Exception:
+        print("this should be the default handler")
+    start = time()
+    for i in range(5 * 10**3):
+        router.add_route(
+            f"/test/this/url/{i}",
+            lambda x: print(f"GET /test/this/url {x}"),
+            [HttpMethod.GET],
+        )
+    router.add_route(
+        f"/test/this/url/<name>",
+        lambda x: print(f"GET /test/this/url {x}"),
+        [HttpMethod.GET],
+    )
+    # with GraphRouteLogic 0.0483 seconds
+    # with SimpleRouteLogic 5.0976 seconds
+    print(f"time elapsed: {time()-start}")
+    start = time()
+    router.get_handler("/test/this/url/suck", HttpMethod.GET)
+    router.get_handler("/test/this/url/3647", HttpMethod.GET)
+    # with GraphRouteLogic 0.0040 seconds
+    # with SimpleRouteLogic 0.0483 seconds
+    print(f"time elapsed: {time()-start}")
