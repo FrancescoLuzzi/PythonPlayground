@@ -101,7 +101,7 @@ class RouteNode:
         if not depth:
             return (
                 [self]
-                if any(x.has_url_params for x in self.current_routes.values())
+                if any(x and x.has_url_params for x in self.current_routes.values())
                 else []
             )
         result = list(
@@ -110,7 +110,7 @@ class RouteNode:
                 for route_node in self.next_routes.values()
             )
         )
-        if any(x.has_url_params for x in self.current_routes.values()):
+        if any(x and x.has_url_params for x in self.current_routes.values()):
             result.append(self)
         return result
 
