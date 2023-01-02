@@ -25,10 +25,6 @@ class UrlFormatError(ValueError):
     pass
 
 
-class RouteNotFoundError(Exception):
-    pass
-
-
 class UrlParamFormatter(Generic[T]):
     converter: T = None
 

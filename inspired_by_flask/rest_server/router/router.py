@@ -1,5 +1,5 @@
-from .routing_logics.route_set import RouteSet
-from .routing_logics.routes import RouteNotFoundError, Route, SimpleRoute, NestedRoute
+from .routing_logics.route_logic import RouteLogic, SimpleRouteLogic
+from .routing_logics.routes import Route, SimpleRoute, NestedRoute
 from .routing_logics.http_method import HttpMethod
 from typing import Any, Callable
 
@@ -27,10 +27,10 @@ class SingletonMeta(type):
 
 
 class Router(metaclass=SingletonMeta):
-    routes: RouteSet = None
+    routes: RouteLogic = None
 
     def __init__(self) -> None:
-        self.routes = RouteSet()
+        self.routes = SimpleRouteLogic()
 
     def get_handler(
         self, __url: str, method: HttpMethod
@@ -40,10 +40,7 @@ class Router(metaclass=SingletonMeta):
         if return is Callable,None, the default_handler is returned
         """
         __url_list = __url.split("/")
-        try:
-            return self.routes.get_route(__url_list, method).parse_url(__url_list)
-        except StopIteration:
-            raise RouteNotFoundError(f"url: {__url} and method: {method} not routed")
+        return self.routes.get_route(__url_list, method).parse_url(__url_list)
 
     def add_route(
         self,
