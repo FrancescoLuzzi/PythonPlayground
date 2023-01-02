@@ -5,7 +5,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from os import environ
 from typing import Any, Callable
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, unquote
 
 from .router import HttpMethod, Route, RouteNotFoundError, Router
 
@@ -195,7 +195,7 @@ class RouteWebserver(BaseHTTPRequestHandler):
         url = self.path
         if url == "/favicon.ico":
             return self.__send_favicon()
-        parsed_url = urlparse(url)
+        parsed_url = urlparse(unquote(url))
         url = parsed_url.path
         get_params = parse_qs(parsed_url.query)
         get_params["HttpMethod_type"] = HttpMethod.GET
