@@ -113,27 +113,43 @@ if __name__ == "__main__":
     handler, params = router.get_handler("/test/1", HttpMethod.POST)
     handler(**params)
     try:
-        handerl, params = router.get_handler("/test/shish", HttpMethod.POST)
+        handler, params = router.get_handler("/test/shish", HttpMethod.POST)
     except Exception:
-        print("this should be the default handler")
+        print("this route doesn't exists")
     start = time()
+
+    class TestClass:
+        def __init__(self, i: int) -> None:
+            self.i = i
+            router.add_route(
+                "/test/this/url/{}".format(i),
+                self.get_print_self,
+                [HttpMethod.GET],
+            )
+
+        def get_print_self(self):
+            print("GET/test/this/url/{}".format(self.i))
+
+    objects_list = []
     for i in range(5 * 10**3):
-        router.add_route(
-            f"/test/this/url/{i}",
-            lambda x: print(f"GET /test/this/url {x}"),
-            [HttpMethod.GET],
-        )
+        objects_list.append(TestClass(i))
+
+    def print_name(*, name: str):
+        print(f"GET /test/this/url {name}")
+
     router.add_route(
         f"/test/this/url/<name>",
-        lambda x: print(f"GET /test/this/url {x}"),
+        print_name,
         [HttpMethod.GET],
     )
-    # with GraphRouteLogic 0.0483 seconds
-    # with SimpleRouteLogic 5.0976 seconds
+    # with GraphRouteLogic 0.0491 seconds
+    # with SimpleRouteLogic 5.1876 seconds
     print(f"time elapsed: {time()-start}")
     start = time()
-    router.get_handler("/test/this/url/suck", HttpMethod.GET)
-    router.get_handler("/test/this/url/3647", HttpMethod.GET)
-    # with GraphRouteLogic 0.0040 seconds
-    # with SimpleRouteLogic 0.0483 seconds
+    handler, params = router.get_handler("/test/this/url/suck", HttpMethod.GET)
+    handler(**params)
+    handler, _ = router.get_handler("/test/this/url/3647", HttpMethod.GET)
+    handler()
+    # with GraphRouteLogic 0.0079 seconds
+    # with SimpleRouteLogic 0.0173 seconds
     print(f"time elapsed: {time()-start}")
