@@ -134,7 +134,7 @@ class RouteNode:
             )
         result = list(
             chain.from_iterable(
-                route_node.get_route_nodes_with_url_params(depth - 1)
+                route_node.get_route_nodes_with_url_params(depth - 1, http_method)
                 for route_node in self.next_routes.values()
             )
         )
