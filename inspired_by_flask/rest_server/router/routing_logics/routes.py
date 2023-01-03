@@ -43,7 +43,21 @@ class UrlParamFormatter(Generic[T]):
 
 
 def url_split(url: str) -> list[str]:
-    return url.split("/")[1:]
+    """Split url string removing the first substring
+
+    ES:
+        url_split("/") -> ""
+        url_split("") -> ""
+        url_split("/test") -> "test"
+
+    Args:
+        url (str): string separated by "/"
+
+    Returns:
+        list[str]: splitted string on "/"
+    """
+    output = url.split("/")
+    return output[1:] if len(output) > 1 else output
 
 
 def parse_url(url_format: list[str], url: list[str]) -> dict[str, str]:
