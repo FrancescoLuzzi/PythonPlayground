@@ -16,10 +16,10 @@ class BadRequestException(Exception):
 
 _LOGGER = logging.getLogger(__name__)
 _FAVICO_CONTENT = b""
-try:
-    with open(environ.get("FAVICO_PATH", ""), "rb") as favicon_file:
+if "FAVICO_PATH" in environ:
+    with open(environ.get("FAVICO_PATH"), "rb") as favicon_file:
         _FAVICO_CONTENT = favicon_file.read()
-except FileNotFoundError:
+else:
     _favicon_path = environ.get("FAVICO_PATH", "FAVICO_PATH not set in os.environ")
     _LOGGER.warning(f"favico file not found -> {_favicon_path}")
 

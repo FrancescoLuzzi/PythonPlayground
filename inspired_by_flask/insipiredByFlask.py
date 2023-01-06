@@ -14,6 +14,7 @@ from os.path import dirname, join
 from dotenv import load_dotenv
 from os import environ
 
+# set FAVICO_PATH env path so that we can find and load the file content
 environ["FAVICO_PATH"] = join(dirname(__file__), "favicon.ico")
 from rest_server import HttpMethod, RouteWebserver, BadRequestException
 
