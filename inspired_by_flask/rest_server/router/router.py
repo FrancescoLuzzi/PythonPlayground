@@ -4,10 +4,10 @@ from .routing_logics.http_method import HttpMethod
 from typing import Any, Callable
 
 
-class SingletonMeta(type):
+class NamedSingletonMeta(type):
     """
     Usage:\n
-        class myclass(metaclass = SingletonMeta):
+        class myclass(metaclass = NamedSingletonMeta):
             ...
 
     """
@@ -18,18 +18,21 @@ class SingletonMeta(type):
         """
         Possible changes to the values of the `__init__` arguments do not affect
         the returned instance.
+        Classes that uses this Metaclass needs a kw parameter called "instance_name" to be able to get
+        that instance.
         """
-        if cls not in cls._instances:
-            if cls not in cls._instances:
-                instance = super().__call__(*args, **kwargs)
-                cls._instances[cls] = instance
-        return cls._instances[cls]
+        instance_name = kwargs.get("instance_name", None)
+        if instance_name and instance_name not in cls._instances:
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[instance_name] = instance
+        return cls._instances[instance_name]
 
 
-class Router(metaclass=SingletonMeta):
+class Router(metaclass=NamedSingletonMeta):
     routes: RouteLogic = None
 
-    def __init__(self) -> None:
+    def __init__(self, *, instance_name: str) -> None:
+        self.instance_name = instance_name
         self.routes = GraphRouteLogic()
 
     def get_handler(

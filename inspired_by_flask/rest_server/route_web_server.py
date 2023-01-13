@@ -170,7 +170,9 @@ class RouteWebserver(BaseHTTPRequestHandler):
         To communicate wrong infos passed raise BadRequestException, returning 501 BAD_REQUEST.
         Other exceptions will return 500 INTERNAL_SERVER_ERROR
         """
-        return Router().add_route(url, func, methods, default_params)
+        return Router(instance_name="RouteWebserver_Router").add_route(
+            url, func, methods, default_params
+        )
 
     def __send_headers(self, http_code: HTTPStatus = HTTPStatus.OK):
         self.send_response(http_code.value)
@@ -200,7 +202,9 @@ class RouteWebserver(BaseHTTPRequestHandler):
         get_params = parse_qs(parsed_url.query)
         get_params["HttpMethod_type"] = HttpMethod.GET
         try:
-            handler, params = Router().get_handler(url, HttpMethod.GET)
+            handler, params = Router(instance_name="RouteWebserver_Router").get_handler(
+                url, HttpMethod.GET
+            )
         except RouteNotFoundError:
             return self.__default_func(**get_params)
 
@@ -230,7 +234,9 @@ class RouteWebserver(BaseHTTPRequestHandler):
             post_params = {}
         post_params["HttpMethod_type"] = HttpMethod.POST
         try:
-            handler, params = Router().get_handler(url, HttpMethod.POST)
+            handler, params = Router(instance_name="RouteWebserver_Router").get_handler(
+                url, HttpMethod.POST
+            )
         except RouteNotFoundError:
             return self.__default_func(**post_params)
 
