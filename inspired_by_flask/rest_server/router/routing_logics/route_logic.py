@@ -39,7 +39,11 @@ class RouteLogic(ABC):
 
 class SimpleRouteLogic(RouteLogic):
     # maps url's length to a list of url with that length
-    __all_routes: "dict[int, list[Route]]" = {}
+    __all_routes: "dict[int, list[Route]]"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.__all_routes = {}
 
     def add_route(self, new_route: "Route") -> None:
         """Add route to dict mapping its splitted url list's length and appending it to the corresponding list
@@ -87,19 +91,19 @@ class SimpleRouteLogic(RouteLogic):
 
 
 class RouteNode:
-    next_routes: dict[str, "RouteNode"] = None
-    current_routes: dict[HttpMethod, Route] = None
+    child_route_nodes: dict[str, "RouteNode"]
+    __mapped_routes: dict[HttpMethod, Route]
 
     def __init__(self, route: Route = None) -> None:
-        self.next_routes = {}
-        self.current_routes = {
+        self.child_route_nodes = {}
+        self.__mapped_routes = {
             HttpMethod.GET: None,
             HttpMethod.POST: None,
         }
 
         if route:
             for http_method in route.accepted_methods:
-                self.current_routes[http_method] = route
+                self.__mapped_routes[http_method] = route
 
     def set_current_routes(self, route: Route) -> None:
         """Set current routes to the input route, using as keys the route's accepted_methods parameter
@@ -108,11 +112,11 @@ class RouteNode:
             route (Route): route to map in this node
         """
         for http_method in route.accepted_methods:
-            if self.current_routes[http_method]:
+            if self.__mapped_routes[http_method]:
                 warnings.warn(
-                    f"url {'/'.join(self.current_routes[http_method].mapped_url)} was already mapped and now overriden, care!"
+                    f"url {'/'.join(self.__mapped_routes[http_method].mapped_url)} was already mapped and now overriden, care!"
                 )
-            self.current_routes[http_method] = route
+            self.__mapped_routes[http_method] = route
 
     def get_route_nodes_with_url_params(
         self, depth: int, http_method: HttpMethod
@@ -128,14 +132,14 @@ class RouteNode:
         if not depth:
             return (
                 [self]
-                if self.current_routes[http_method]
-                and self.current_routes[http_method].has_url_params
+                if self.__mapped_routes[http_method]
+                and self.__mapped_routes[http_method].has_url_params
                 else []
             )
         result = list(
             chain.from_iterable(
                 route_node.get_route_nodes_with_url_params(depth - 1, http_method)
-                for route_node in self.next_routes.values()
+                for route_node in self.child_route_nodes.values()
             )
         )
         return result
@@ -162,7 +166,7 @@ class RouteNode:
 
         # if a single RouteNode is retreived, return corresponding http_method Route
         if isinstance(result_nodes, RouteNode):
-            return result_nodes.current_routes[http_method]
+            return result_nodes.__mapped_routes[http_method]
 
         # if a list of RouteNode is retreived, this means that the url was not directly
         # matched, so we could be searching for an url mapped to accept embedded parameters.
@@ -172,7 +176,7 @@ class RouteNode:
                 filter(
                     lambda route: route.validate_url(url),
                     map(
-                        lambda route_node: route_node.current_routes[http_method],
+                        lambda route_node: route_node.__mapped_routes[http_method],
                         result_nodes,
                     ),
                 )
@@ -187,7 +191,7 @@ class RouteNode:
     ) -> "RouteNode | list[RouteNode]":
         """Given the url_pieces to look for and http_method return a RouteNode or a List of RouteNode.
 
-        If next_url piece is present in next_routes mapping call same method without next_url piece until url_pieces is empty.
+        If next_url piece is present in child_route_nodes mapping call same method without next_url piece until url_pieces is empty.
 
         If next_url is not found call get_route_nodes_with_url_params, it will return a list[RouteNode]; see it's __doc__ for more.
 
@@ -204,25 +208,25 @@ class RouteNode:
 
         """
         if not url_pieces:
-            if self.current_routes[http_method] is None:
+            if self.__mapped_routes[http_method] is None:
                 raise RouteNotFoundError("route not found!")
             return self
 
         next_url = url_pieces.pop(0)
-        if next_url not in self.next_routes:
+        if next_url not in self.child_route_nodes:
             tmp = []
-            for route in self.next_routes.values():
+            for route in self.child_route_nodes.values():
                 tmp.extend(
                     route.get_route_nodes_with_url_params(len(url_pieces), http_method)
                 )
             return tmp
 
-        return self.next_routes[next_url].get_route_node(url_pieces, http_method)
+        return self.child_route_nodes[next_url].get_route_node(url_pieces, http_method)
 
     def add_route_node(self, url_pieces: list[str], new_route: Route) -> None:
         """Given the url_pieces to add in the graph and the route, add the route in the required location.
 
-        If next_url piece is not present in next_routes mapping add a new RouteNode,
+        If next_url piece is not present in child_route_nodes mapping add a new RouteNode,
         then call the same method without next_url piece until url_pieces is empty,
         then map the route to the requested http_methods.
 
@@ -232,15 +236,15 @@ class RouteNode:
         """
         next_url = url_pieces.pop(0)
         # add RouteNode if it doesen't exist
-        if next_url not in self.next_routes:
-            self.next_routes[next_url] = RouteNode()
+        if next_url not in self.child_route_nodes:
+            self.child_route_nodes[next_url] = RouteNode()
 
         # if not last part of url
         if url_pieces:
-            self.next_routes[next_url].add_route_node(url_pieces, new_route)
+            self.child_route_nodes[next_url].add_route_node(url_pieces, new_route)
             return
 
-        self.next_routes[next_url].set_current_routes(new_route)
+        self.child_route_nodes[next_url].set_current_routes(new_route)
 
     def add_route(self, new_route: Route) -> None:
         """Map a new route in the graph
@@ -252,7 +256,7 @@ class RouteNode:
 
 
 class GraphRouteLogic(RouteLogic):
-    __all_routes: RouteNode = None
+    __all_routes: RouteNode
 
     def __init__(self) -> None:
         self.__all_routes = RouteNode()
