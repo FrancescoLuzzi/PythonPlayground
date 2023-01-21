@@ -45,11 +45,11 @@ def post_ollare(*, name, surname, **kwargs):
 
 
 @RouteWebserver.route("/bar", [HttpMethod.GET, HttpMethod.POST])
-def get_post_swag_stuff(*, HttpMethod_type: HttpMethod, foo=[], bar=[], **kwargs):
+def get_post_swag_stuff(*, HttpMethod_type: "HttpMethod", foo=[], bar=[], **kwargs):
     if not (bar and foo):
         raise BadRequestException("missing parameters foo or bar!")
     return {
-        "response": f"{HttpMethod_type} HelloWorld!",
+        "response": "{} HelloWorld!".format(),
         "HttpMethod_type": str(HttpMethod_type),
         "foo": foo,
         "bar": bar,
@@ -58,7 +58,7 @@ def get_post_swag_stuff(*, HttpMethod_type: HttpMethod, foo=[], bar=[], **kwargs
 
 @RouteWebserver.route("/multi_params/<first>", default_params={"second": 57})
 @RouteWebserver.route("/multi_params/<first>/<int:second>")
-def get_multi_params(*, HttpMethod_type: HttpMethod, first, second):
+def get_multi_params(*, HttpMethod_type: "HttpMethod", first, second):
     return {
         "HttpMethod_type": str(HttpMethod_type),
         "first": first,
@@ -67,51 +67,57 @@ def get_multi_params(*, HttpMethod_type: HttpMethod, first, second):
 
 
 class Foo:
-    self_param: str = "Bar"
-    __my_id: int = 0
+    self_param = "Bar"  # type: str
+    __my_id = 0  # type: int
 
     def __init__(self, id: int) -> None:
         self.__my_id = id
         RouteWebserver.route_method(
-            self.get_simple_response, f"/class/{self.__my_id}/function/<bar>"
+            self.get_simple_response, "/class/{}/function/<bar>".format(self.__my_id)
         )
         RouteWebserver.route_method(
             self.post_simple_response,
-            f"/class/{self.__my_id}/function",
+            "/class/{}/function".format(self.__my_id),
             [HttpMethod.POST],
         )
         temp_route = RouteWebserver.route_method(
             self.get_multi_response,
-            f"/class/{self.__my_id}/multi_params/<first>/<int:second>",
+            "/class/{}/multi_params/<first>/<int:second>".format(self.__my_id),
             [HttpMethod.GET],
         )
         RouteWebserver.route_method(
             temp_route,
-            f"/class/{self.__my_id}/multi_params/<first>",
+            "/class/{}/multi_params/<first>".format(self.__my_id),
             [HttpMethod.GET],
             {"second": 42},
         )
 
-    def get_simple_response(self, *, HttpMethod_type: HttpMethod, bar: str):
+    def get_simple_response(self, *, HttpMethod_type: "HttpMethod", bar: str):
         return {
             "HttpMethod_type": str(HttpMethod_type),
-            "message": f"function called in class, look!! {self.self_param=}",
+            "message": "function called in class, look!! self.self_param={}".format(
+                self.self_param
+            ),
             "bar": bar,
         }
 
-    def post_simple_response(self, *, HttpMethod_type: HttpMethod, message: str):
+    def post_simple_response(self, *, HttpMethod_type: "HttpMethod", message: str):
         return {
             "HttpMethod_type": str(HttpMethod_type),
-            "message": f"function called in class, look!! {self.self_param=}",
+            "message": "function called in class, look!! self.self_param={}".format(
+                self.self_param
+            ),
             "message_received": message,
         }
 
     def get_multi_response(
-        self, *, HttpMethod_type: HttpMethod, first: str, second: int
+        self, *, HttpMethod_type: "HttpMethod", first: str, second: int
     ):
         return {
             "HttpMethod_type": str(HttpMethod_type),
-            "message": f"function called in class, look!! {self.self_param=}",
+            "message": "function called in class, look!! self.self_param={}".format(
+                self.self_param
+            ),
             "first": first,
             "second": second,
         }
@@ -120,5 +126,5 @@ class Foo:
 ollare = Foo(558)
 
 
-_LOGGER.info(f"Serving server on http://localhost:{PORT}")
+_LOGGER.info("Serving server on http://localhost:{}".format(PORT))
 WebApp.serve_forever()

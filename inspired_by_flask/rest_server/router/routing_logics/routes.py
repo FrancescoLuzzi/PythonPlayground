@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import update_wrapper
 from re import compile
-from typing import Any, Callable, Generic, Iterator, TypeVar
+from typing import Any, List, Callable, Generic, Iterator, TypeVar, Tuple
 
 from .http_method import HttpMethod
 
@@ -42,7 +42,7 @@ class UrlParamFormatter(Generic[T]):
         return self.converter(value)
 
 
-def url_split(url: str) -> list[str]:
+def url_split(url: str) -> List[str]:
     """Split url string removing the first substring
 
     ES:
@@ -54,13 +54,13 @@ def url_split(url: str) -> list[str]:
         url (str): string separated by "/"
 
     Returns:
-        list[str]: splitted string on "/"
+        List[str]: splitted string on "/"
     """
     output = url.split("/")
     return output[1:] if len(output) > 1 else output
 
 
-def parse_url(url_format: list[str], url: list[str]) -> dict[str, str]:
+def parse_url(url_format: List[str], url: List[str]) -> dict[str, str]:
     """
     from format /url/format/<int:name1>/<name2> passed as ["url","format","<int:name1>","<name2>"]
     url=["url","format","1","oh_yeah"] -> return {"name1": "1", "name2": "oh_yeah"}
@@ -69,7 +69,9 @@ def parse_url(url_format: list[str], url: list[str]) -> dict[str, str]:
     params_dict = {}
     if len(url_format) != len(url):
         raise UrlFormatError(
-            f"len of format url is different from given url\n{url_format=}\n{url=}"
+            "len of format url is different from given url\nurl_format={}\nurl={}".format(
+                url_format, url
+            )
         )
 
     for format_part, request_part in zip(url_format, url):
@@ -84,7 +86,7 @@ def parse_url(url_format: list[str], url: list[str]) -> dict[str, str]:
     return params_dict
 
 
-def from_url_get_required_params(url_format: str) -> dict[str, UrlParamFormatter]:
+def from_url_get_required_params(url_format: str) -> dict[str, "UrlParamFormatter"]:
     """
     from format /url/format/<int:name1>/<name2>
 
@@ -110,7 +112,7 @@ def url_contains_params(url_format: str) -> bool:
     return bool(_URL_PARAMS_FINDER.findall(url_format))
 
 
-def from_url_get_required_params_names(url_format: list[str]) -> Iterator[str]:
+def from_url_get_required_params_names(url_format: List[str]) -> Iterator[str]:
     """
     from format ["url","format","<int:name1>","<name2>"]
     return Iterator("name1","name2")
@@ -123,8 +125,8 @@ def from_url_get_required_params_names(url_format: list[str]) -> Iterator[str]:
 
 
 class Route(ABC):
-    mapped_url: list[str] = []
-    accepted_methods: set["HttpMethod"] = []
+    mapped_url = []  # type:List[str]
+    accepted_methods = []  # type: set["HttpMethod"]
 
     @abstractmethod
     def __init__(self) -> None:
@@ -137,7 +139,7 @@ class Route(ABC):
                 and self.accepted_methods & __o.accepted_methods
             )
         else:
-            raise ValueError(f"== not supported for type {type(__o)}")
+            raise ValueError("== not supported for type {}".format(type(__o)))
 
     def validate_method(self, method: "HttpMethod"):
         return method in self.accepted_methods
@@ -148,17 +150,17 @@ class Route(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def validate_url(self, url: list[str]) -> bool:
+    def validate_url(self, url: List[str]) -> bool:
         raise NotImplementedError()
 
     @abstractmethod
-    def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
+    def parse_url(self, url: List[str]) -> Tuple[Callable, dict]:
         raise NotImplementedError()
 
 
 class SimpleRoute(Route):
-    handler: Callable = print
-    __reqired_url_params: dict[str, UrlParamFormatter] = {}
+    handler = print  # type: Callable
+    __reqired_url_params = {}  # type: dict[str, "UrlParamFormatter"]
 
     def __init__(
         self,
@@ -176,7 +178,7 @@ class SimpleRoute(Route):
     def has_url_params(self) -> bool:
         return bool(self.__reqired_url_params)
 
-    def validate_url(self, url: list[str]) -> bool:
+    def validate_url(self, url: List[str]) -> bool:
         try:
             return all(
                 self.__reqired_url_params[key].is_convertable(value)
@@ -185,7 +187,7 @@ class SimpleRoute(Route):
         except UrlFormatError:
             return False
 
-    def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
+    def parse_url(self, url: List[str]) -> Tuple[Callable, dict]:
         return (
             self.handler,
             {
@@ -199,13 +201,13 @@ class SimpleRoute(Route):
 
 
 class NestedRoute(Route):
-    mapped_route: Route
-    __default_url_params_str: list[str] = []
+    mapped_route = None  # type: Route
+    __default_url_params_str = []  # type: List[str]
 
     def __init__(
         self,
         url: str,
-        mapped_route: SimpleRoute,
+        mapped_route: "SimpleRoute",
         accepted_methods: set["HttpMethod"],
         default_url_params: dict[str, Any],
     ) -> None:
@@ -227,10 +229,10 @@ class NestedRoute(Route):
     def has_url_params(self) -> bool:
         return True
 
-    def validate_url(self, url: list[str]) -> bool:
+    def validate_url(self, url: List[str]) -> bool:
         return self.mapped_route.validate_url(url + self.__default_url_params_str)
 
-    def parse_url(self, url: list[str]) -> tuple[Callable, dict]:
+    def parse_url(self, url: List[str]) -> Tuple[Callable, dict]:
         return self.mapped_route.parse_url(url + self.__default_url_params_str)
 
     def __call__(self, *args, **kwargs) -> Any:

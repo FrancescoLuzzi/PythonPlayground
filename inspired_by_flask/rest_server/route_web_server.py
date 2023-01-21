@@ -4,7 +4,7 @@ import socketserver
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler
 from os import environ
-from typing import Any, Callable
+from typing import Any, Callable, List, Tuple
 from urllib.parse import parse_qs, urlparse, unquote
 
 from .router import HttpMethod, Route, RouteNotFoundError, Router
@@ -21,24 +21,26 @@ if "FAVICO_PATH" in environ:
         _FAVICO_CONTENT = favicon_file.read()
 else:
     _favicon_path = environ.get("FAVICO_PATH", "FAVICO_PATH not set in os.environ")
-    _LOGGER.warning(f"favico file not found -> {_favicon_path}")
+    _LOGGER.warning("favico file not found -> {}".format(_favicon_path))
 
 
 class RouteWebserver(BaseHTTPRequestHandler):
     def __init__(
         self,
         request: bytes,
-        client_address: tuple[str, int],
-        server: socketserver.BaseServer,
+        client_address: Tuple[str, int],
+        server: "socketserver.BaseServer",
     ) -> None:
         super().__init__(request, client_address, server)
 
-    def __default_func(self, *, HttpMethod_type: HttpMethod = None, **kwargs):
+    def __default_func(self, *, HttpMethod_type: "HttpMethod" = None, **kwargs):
         """
         Default return when an url is not mapped to a function
         """
         self.__send_headers(HTTPStatus.NOT_IMPLEMENTED)
-        _LOGGER.warning(f"{self.path} request not mapped for {HttpMethod_type} method.")
+        _LOGGER.warning(
+            "{} request not mapped for {} method.".format(self.path, HttpMethod_type)
+        )
 
     def log_message(self, format: str, *args) -> None:
         _LOGGER.info("%s - - %s\n" % (self.address_string(), format % args))
@@ -50,7 +52,7 @@ class RouteWebserver(BaseHTTPRequestHandler):
     def route(
         cls,
         url: str,
-        methods: list[HttpMethod] = [HttpMethod.GET],
+        methods: List["HttpMethod"] = [HttpMethod.GET],
         default_params: dict[str, Any] = {},
     ) -> Route:
         """
@@ -131,7 +133,7 @@ class RouteWebserver(BaseHTTPRequestHandler):
         cls,
         func: Callable,
         url: str,
-        methods: list[HttpMethod] = [HttpMethod.GET],
+        methods: List["HttpMethod"] = [HttpMethod.GET],
         default_params: dict[str, Any] = {},
     ) -> Route:
         """
@@ -146,24 +148,24 @@ class RouteWebserver(BaseHTTPRequestHandler):
             def __init__(self, id:int) -> None:\n
                 self.__my_id = id\n
                 RouteWebserver.route_method(\n
-                    self.get_simple_response, f"/class/{self.__my_id}/function"\n
+                    self.get_simple_response, "/class/{}/function".format(self.__my_id)\n
                 )\n
                 RouteWebserver.route_method(\n
                     self.post_simple_response,\n
-                    f"/class/{self.__my_id}/function",\n
+                    "/class/{}/function".format(self.__my_id),\n
                     [HttpMethod.POST],\n
                 )\n
 
             def get_simple_response(self, *, HttpMethod_type: HttpMethod):\n
                 return {\n
                     "HttpMethod_type": str(HttpMethod_type),\n
-                    "message": f"function called in class, look!! {self.self_param=}",\n
+                    "message": "function called in class, look!! {}".format(self.self_param),\n
                 }\n
 
             def post_simple_response(self, *, HttpMethod_type: HttpMethod, bar:str):\n
                 return {\n
                     "HttpMethod_type": str(HttpMethod_type),\n
-                    "message": f"function called in class, look!! {self.self_param=}",\n
+                    "message": "function called in class, look!! {}".format(self.self_param),\n
                     "you_sent": bar\n
                 }\n
 

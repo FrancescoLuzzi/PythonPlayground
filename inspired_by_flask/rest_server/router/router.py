@@ -1,7 +1,7 @@
 from .routing_logics.route_logic import RouteLogic, SimpleRouteLogic, GraphRouteLogic
 from .routing_logics.routes import Route, SimpleRoute, NestedRoute, url_split
 from .routing_logics.http_method import HttpMethod
-from typing import Any, Callable
+from typing import Any, Callable, List, Optional, Union, Tuple
 
 
 class NamedSingletonMeta(type):
@@ -29,15 +29,15 @@ class NamedSingletonMeta(type):
 
 
 class Router(metaclass=NamedSingletonMeta):
-    routes: RouteLogic = None
+    routes = None  # type: RouteLogic
 
     def __init__(self, *, instance_name: str) -> None:
         self.instance_name = instance_name
         self.routes = GraphRouteLogic()
 
     def get_handler(
-        self, __url: str, method: HttpMethod
-    ) -> tuple[Callable, dict | None]:
+        self, __url: str, method: "HttpMethod"
+    ) -> Tuple[Callable, Optional[dict]]:
         """
         get handler for specified __url and method
         if return is Callable,None, the default_handler is returned
@@ -48,10 +48,10 @@ class Router(metaclass=NamedSingletonMeta):
     def add_route(
         self,
         url: str,
-        handler: Callable | Route,
-        accepted_methods: list[HttpMethod] = [HttpMethod.GET],
+        handler: Union[Callable, "Route"],
+        accepted_methods: List["HttpMethod"] = [HttpMethod.GET],
         default_params: dict[str, Any] = {},
-    ) -> Route:
+    ) -> "Route":
 
         new_route = None
         if isinstance(handler, SimpleRoute):
@@ -66,7 +66,7 @@ class Router(metaclass=NamedSingletonMeta):
             new_route = SimpleRoute(url, handler, set(accepted_methods))
         else:
             raise ValueError(
-                f"routing not implemented for handler of type {type(handler)}"
+                "routing not implemented for handler of type {}".format(type(handler))
             )
 
         self.routes.add_route(new_route)
@@ -75,9 +75,9 @@ class Router(metaclass=NamedSingletonMeta):
     def route(
         self,
         url: str,
-        accepted_methods: list[HttpMethod] = [HttpMethod.GET],
+        accepted_methods: List["HttpMethod"] = [HttpMethod.GET],
         default_params: dict[str, Any] = {},
-    ) -> Route:
+    ) -> "Route":
         """decorator, same functionality of add_route"""
 
         def decorate(handler):
@@ -92,10 +92,14 @@ if __name__ == "__main__":
 
     router = Router()
     router.add_route(
-        "/test/this/url", lambda x: print(f"GET /test/this/url {x}"), [HttpMethod.GET]
+        "/test/this/url",
+        lambda x: print("GET /test/this/url {}".format(x)),
+        [HttpMethod.GET],
     )
     router.add_route(
-        "/test/this/url", lambda x: print(f"POST /test/this/url {x}"), [HttpMethod.POST]
+        "/test/this/url",
+        lambda x: print("POST /test/this/url {}".format(x)),
+        [HttpMethod.POST],
     )
 
     @router.route(
@@ -105,7 +109,7 @@ if __name__ == "__main__":
     )
     @router.route("/test/<int:this>/<url>", [HttpMethod.GET, HttpMethod.POST])
     def oll(this=None, url=None):
-        print(f"handler POST/GET parameters {this=}  {url=}")
+        print("handler POST/GET parameters this={}  url={}".format(this, url))
 
     handler, params = router.get_handler("/test/this/url", HttpMethod.GET)
     handler(params)
@@ -138,16 +142,16 @@ if __name__ == "__main__":
         objects_list.append(TestClass(i))
 
     def print_name(*, name: str):
-        print(f"GET /test/this/url {name}")
+        print("GET /test/this/url {}".format(name))
 
     router.add_route(
-        f"/test/this/url/<name>",
+        "/test/this/url/<name>",
         print_name,
         [HttpMethod.GET],
     )
     # with GraphRouteLogic 0.0491 seconds
     # with SimpleRouteLogic 5.1876 seconds
-    print(f"time elapsed: {time()-start}")
+    print("time elapsed: {}".format(time() - start))
     start = time()
     handler, params = router.get_handler("/test/this/url/suck", HttpMethod.GET)
     handler(**params)
@@ -155,4 +159,4 @@ if __name__ == "__main__":
     handler()
     # with GraphRouteLogic 0.0079 seconds
     # with SimpleRouteLogic 0.0173 seconds
-    print(f"time elapsed: {time()-start}")
+    print("time elapsed: {}".format(time() - start))
