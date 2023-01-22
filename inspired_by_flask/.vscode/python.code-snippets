@@ -1,0 +1,29 @@
+{
+    "RouteWebserverGet": {
+        "prefix": ["get","Get"],
+        "body": [
+            "@RouteWebserver.get(\"/${1:root}\")",
+            "def ${2:foo}(*, HttpMethod_type: \"HttpMethod\"${3:,extra}):",
+            "   ${4:pass}"
+        ],
+        "description": "Create get endpoint"
+    },
+    "RouteWebserverPost": {
+        "prefix": ["post","Post"],
+        "body": [
+            "@RouteWebserver.post(\"/${1:root}\")",
+            "def ${2:foo}(*, HttpMethod_type: \"HttpMethod\"${3:,extra}):",
+            "   ${4:pass}"
+        ],
+        "description": "Create post endpoint"
+    },
+    "RouteWebserverRouteMethod": {
+        "prefix": ["routeMethod","RouteMethod"],
+        "body": [
+            "RouteWebserver.route_method(",
+            "   self.${1:method}, \"/${2:url}\", ${3:[HttpMethod.GET,HttpMethod.POST]}, ${4:{\"default\":\"params\"}}",
+            ")"
+        ],
+        "description": "Route class method to endpoint"
+    }
+}
