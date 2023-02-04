@@ -85,6 +85,9 @@ class Router(metaclass=NamedSingletonMeta):
 
         return decorate
 
+    def get_definition_and_docstring(self) -> "dict[str,dict[str,str]]":
+        return self.routes.get_definition_and_docstring()
+
 
 if __name__ == "__main__":
     # testing code

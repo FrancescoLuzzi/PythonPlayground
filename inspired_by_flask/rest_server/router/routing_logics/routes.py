@@ -2,9 +2,22 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import update_wrapper
 from re import compile
-from typing import Any, List, Callable, Generic, Iterator, TypeVar, Tuple
+import logging
+from typing import (
+    Any,
+    List,
+    Callable,
+    Generic,
+    Iterator,
+    TypeVar,
+    Tuple,
+    get_type_hints,
+)
+from inspect import getdoc
 
 from .http_method import HttpMethod
+
+_LOGGER = logging.getLogger(__name__)
 
 _URL_PARAMS_FINDER = compile(r"(\<.+?\>)")
 _URL_PARAMS_TYPE_FINDER = compile(r"\<((?P<type>.+):)?(?P<name>.+){1}\>")
@@ -124,6 +137,10 @@ def from_url_get_required_params_names(url_format: List[str]) -> Iterator[str]:
         yield param.group("name")
 
 
+def remove_quotes(string: str):
+    return "".join(filter(lambda x: x not in ['"', "'"], string))
+
+
 class Route(ABC):
     mapped_url = []  # type:List[str]
     accepted_methods = []  # type: set["HttpMethod"]
@@ -157,10 +174,15 @@ class Route(ABC):
     def parse_url(self, url: List[str]) -> Tuple[Callable, dict]:
         raise NotImplementedError()
 
+    @abstractmethod
+    def get_definition_and_docstring(self) -> dict:
+        raise NotImplementedError()
+
 
 class SimpleRoute(Route):
     handler = print  # type: Callable
     __reqired_url_params = {}  # type: dict[str, "UrlParamFormatter"]
+    definition_and_docstring = {}  # type: dict[str,dict[str,str]]
 
     def __init__(
         self,
@@ -172,6 +194,25 @@ class SimpleRoute(Route):
         self.accepted_methods = accepted_methods
         self.__reqired_url_params = from_url_get_required_params(url)
         self.handler = handler
+        self.definition_and_docstring = {}
+        route_infos = {}
+        route_infos["description"] = getdoc(handler)
+        handler_type_hints = {
+            key: remove_quotes(str(value))
+            for key, value in get_type_hints(handler).items()
+        }
+        route_infos["return"] = handler_type_hints.get("return")
+        try:
+            del handler_type_hints["return"]
+        except KeyError:
+            _LOGGER.warning(
+                "function %s, routed to url %s, doesn't have a return type hint!",
+                handler.__name__,
+                url,
+            )
+        route_infos["parameters"] = handler_type_hints
+        methods_to_str = "_".join(map(str, accepted_methods))
+        self.definition_and_docstring[" ".join((methods_to_str, url))] = route_infos
         update_wrapper(wrapper=self, wrapped=self.handler)
 
     @property
@@ -195,6 +236,9 @@ class SimpleRoute(Route):
                 for key, value in parse_url(self.mapped_url, url).items()
             },
         )
+
+    def get_definition_and_docstring(self) -> "dict[str,dict[str,str]]":
+        return self.definition_and_docstring
 
     def __call__(self, *args, **kwargs) -> Any:
         return self.handler(*args, **kwargs)
@@ -223,6 +267,17 @@ class NestedRoute(Route):
             )
             if param_name in default_url_params
         ]
+        try:
+            mapped_route_url = next(iter(mapped_route.get_definition_and_docstring()))
+            mapped_route.definition_and_docstring[mapped_route_url][
+                "default"
+            ] = default_url_params
+            print(mapped_route.definition_and_docstring[mapped_route_url]["default"])
+        except StopIteration:
+            # empty description
+            _LOGGER.warning(
+                "{} has empty definition!".format("/".join(mapped_route.mapped_url))
+            )
         update_wrapper(wrapper=self, wrapped=self.mapped_route.handler)
 
     @property
@@ -234,6 +289,9 @@ class NestedRoute(Route):
 
     def parse_url(self, url: List[str]) -> Tuple[Callable, dict]:
         return self.mapped_route.parse_url(url + self.__default_url_params_str)
+
+    def get_definition_and_docstring(self) -> "dict[str,dict[str,str]]":
+        return {}
 
     def __call__(self, *args, **kwargs) -> Any:
         return self.mapped_route(*args, **kwargs)

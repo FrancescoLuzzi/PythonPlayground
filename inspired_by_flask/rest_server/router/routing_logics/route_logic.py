@@ -37,10 +37,19 @@ class RouteLogic(ABC):
         """
         raise NotImplementedError()
 
+    @abstractmethod
+    def get_definition_and_docstring(self) -> "dict[str,dict[str,str]]":
+        """Returns all routed methods definition and descriptions
+
+        Returns:
+            dict
+        """
+
 
 class SimpleRouteLogic(RouteLogic):
     # maps url's length to a list of url with that length
     __all_routes = {}  # type: "dict[int, List[Route]]"
+    __route_definitions = {}  # type: dict[str,dict[str,str]]
 
     def __init__(self) -> None:
         super().__init__()
@@ -90,6 +99,18 @@ class SimpleRouteLogic(RouteLogic):
             raise RouteNotFoundError(
                 "url: {} and method: {} not routed".format(url, http_method)
             ) from e
+
+    def get_definition_and_docstring(self) -> "dict[str,dict[str,str]]":
+        if self.__route_definitions:
+            return self.__route_definitions
+
+        for routes in self.__all_routes.values():
+            for route in routes:
+                self.__route_definitions = {
+                    **self.__route_definitions,
+                    **route.get_definition_and_docstring(),
+                }
+        return self.__route_definitions
 
 
 class RouteNode:
@@ -258,12 +279,26 @@ class RouteNode:
         """
         self.add_route_node(copy(new_route.mapped_url), new_route)
 
+    def get_definition_and_docstring(self) -> "dict[str,dict[str,str]]":
+        out_defs = {}
+        for route in self.child_route_nodes.values():
+            out_defs = {**out_defs, **route.get_definition_and_docstring()}
+        for method in HttpMethod:
+            if self.__mapped_routes[method]:
+                out_defs = {
+                    **out_defs,
+                    **self.__mapped_routes[method].get_definition_and_docstring(),
+                }
+        return out_defs
+
 
 class GraphRouteLogic(RouteLogic):
     __all_routes = None  # type: RouteNode
+    __route_definitions = {}  # type: dict[str,dict[str,str]]
 
     def __init__(self) -> None:
         self.__all_routes = RouteNode()
+        self.__route_definitions = {}
 
     def add_route(self, new_route: "Route") -> None:
         """Add route to the graph mapping adding the corresponding nodes
@@ -287,3 +322,10 @@ class GraphRouteLogic(RouteLogic):
             Route: mapped Routed to corresponding url and http_method
         """
         return self.__all_routes.get_route(url, http_method)
+
+    def get_definition_and_docstring(self) -> dict[str, dict[str, str]]:
+        if self.__route_definitions:
+            return self.__route_definitions
+
+        self.__route_definitions = self.__all_routes.get_definition_and_docstring()
+        return self.__route_definitions
