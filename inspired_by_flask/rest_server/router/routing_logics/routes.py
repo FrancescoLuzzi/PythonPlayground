@@ -272,7 +272,6 @@ class NestedRoute(Route):
             mapped_route.definition_and_docstring[mapped_route_url][
                 "default"
             ] = default_url_params
-            print(mapped_route.definition_and_docstring[mapped_route_url]["default"])
         except StopIteration:
             # empty description
             _LOGGER.warning(
