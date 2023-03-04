@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.INFO)
@@ -30,18 +31,18 @@ WebApp = HTTPServer(("0.0.0.0", PORT), RouteWebserver)
 
 @RouteWebserver.route("/", [HttpMethod.GET])
 def get_ollare(**kwargs):
-    return {"response": "HelloWorld!"}
+    return {"response": "GET / HelloWorld!"}
 
 
 @RouteWebserver.get("/foo")
 def get_ollare(*, foo=[], **kwargs):
-    return {"response": "GET HelloWorld!", "foo": foo}
+    return {"response": "GET /foo HelloWorld!", "foo": foo}
 
 
 @RouteWebserver.post("/foo")
 def post_ollare(*, name, surname, **kwargs):
     _LOGGER.info("POST")
-    return {"response": "POST HelloWorld!", "name": name, "surname": surname}
+    return {"response": "POST /foo HelloWorld!", "name": name, "surname": surname}
 
 
 @RouteWebserver.route("/bar", [HttpMethod.GET, HttpMethod.POST])
@@ -49,8 +50,8 @@ def get_post_swag_stuff(*, HttpMethod_type: "HttpMethod", foo=[], bar=[], **kwar
     if not (bar and foo):
         raise BadRequestException("missing parameters foo or bar!")
     return {
-        "response": "{} HelloWorld!".format(),
-        "HttpMethod_type": str(HttpMethod_type),
+        "response": "{} /bar HelloWorld!".format(HttpMethod_type),
+        "HttpMethod_type": HttpMethod_type,
         "foo": foo,
         "bar": bar,
     }
@@ -60,17 +61,17 @@ def get_post_swag_stuff(*, HttpMethod_type: "HttpMethod", foo=[], bar=[], **kwar
 @RouteWebserver.route("/multi_params/<first>/<int:second>")
 def get_multi_params(*, HttpMethod_type: "HttpMethod", first, second):
     return {
-        "HttpMethod_type": str(HttpMethod_type),
+        "reponse": "GET /multi_params/<first>/<int:second> HelloWorld!",
+        "HttpMethod_type": HttpMethod_type,
         "first": first,
         "second": second,
     }
 
 
 class Foo:
-    self_param = "Bar"  # type: str
     __my_id = 0  # type: int
 
-    def __init__(self, id: int) -> None:
+    def __init__(self, id: Any) -> None:
         self.__my_id = id
         RouteWebserver.route_method(
             self.get_simple_response, "/class/{}/function/<bar>".format(self.__my_id)
@@ -94,18 +95,18 @@ class Foo:
 
     def get_simple_response(self, *, HttpMethod_type: "HttpMethod", bar: str):
         return {
-            "HttpMethod_type": str(HttpMethod_type),
-            "message": "function called in class, look!! self.self_param={}".format(
-                self.self_param
+            "HttpMethod_type": HttpMethod_type,
+            "message": "function called in class, look!! self.__my_id={}".format(
+                self.__my_id
             ),
             "bar": bar,
         }
 
     def post_simple_response(self, *, HttpMethod_type: "HttpMethod", message: str):
         return {
-            "HttpMethod_type": str(HttpMethod_type),
-            "message": "function called in class, look!! self.self_param={}".format(
-                self.self_param
+            "HttpMethod_type": HttpMethod_type,
+            "message": "function called in class, look!! self.__my_id={}".format(
+                self.__my_id
             ),
             "message_received": message,
         }
@@ -114,9 +115,9 @@ class Foo:
         self, *, HttpMethod_type: "HttpMethod", first: str, second: int
     ):
         return {
-            "HttpMethod_type": str(HttpMethod_type),
-            "message": "function called in class, look!! self.self_param={}".format(
-                self.self_param
+            "HttpMethod_type": HttpMethod_type,
+            "message": "function called in class, look!! self.__my_id={}".format(
+                self.__my_id
             ),
             "first": first,
             "second": second,
