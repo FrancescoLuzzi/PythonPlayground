@@ -1,0 +1,5 @@
+[alias]
+build = "! pyinstaller --onefile file_organizer.py"
+test = "! coverage run -m pytest && coverage report"
+clean-dir = "! pyclean . --debris --verbose --erase build/**/* build/** build --yes"
+lint = "! pylint file_organizer.py"
