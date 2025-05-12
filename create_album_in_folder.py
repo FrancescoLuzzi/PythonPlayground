@@ -1,4 +1,11 @@
 # pip install eyeD3
+# pip install python-magic-bin
+
+# to download a youtube video as mp3:
+# download https://github.com/yt-dlp/yt-dlp
+# install or configure ffmpeg in the PATH
+# yt-dlp.exe --extract-audio --audio-format mp3 "link to video or playlist"
+
 import eyed3
 from os import listdir
 from os.path import join, splitext
