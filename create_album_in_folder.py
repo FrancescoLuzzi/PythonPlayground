@@ -7,6 +7,7 @@
 # yt-dlp.exe --extract-audio --audio-format mp3 "link to video or playlist"
 
 import eyed3
+import typing as t
 from os import listdir
 from os.path import join, splitext
 import argparse
@@ -16,13 +17,19 @@ def remove_quotes(string: str):
     return "".join(filter(lambda x: x not in ['"', "'"], string))
 
 
-def main(parsed_args: argparse.Namespace):
+def main(parsed_args: argparse.Namespace, print_help: t.Callable):
     author = parsed_args.author
     album = parsed_args.album
     base_dir = remove_quotes(parsed_args.dir)
+    if not all((author, album, base_dir)):
+        print_help()
+        return
     songs_names = list(filter(lambda x: ".mp3" in x, listdir(base_dir)))
     for number, song_name in enumerate(songs_names):
         audiofile = eyed3.load(join(base_dir, song_name))
+        if audiofile is None:
+            print(f"can't load file {song_name}")
+            continue
         audiofile.tag.artist = author
         audiofile.tag.album = album
         title, _ = splitext(song_name)
@@ -55,4 +62,4 @@ if __name__ == "__main__":
         help="add album directory location",
     )
     parsed_args = parser.parse_args()
-    main(parsed_args)
+    main(parsed_args, parser.print_help)
